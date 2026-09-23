@@ -5,7 +5,14 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ProductBrain V1 — Enterprise Product Intelligence Engine",
-  description: "Autonomous Product Intelligence platform connecting Salesforce ARR, Zendesk Support logs, and Jira engineering execution."
+  description: "Autonomous Product Intelligence platform connecting Salesforce ARR, Zendesk Support logs, and Jira engineering execution.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" }
+    ],
+    apple: "/apple-icon.png"
+  }
 };
 
 export default function RootLayout({
