@@ -18,7 +18,9 @@ import {
   Key,
   AlertCircle,
   Sparkles,
-  Check
+  Check,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import {
   UserRole,
@@ -46,6 +48,7 @@ function SignInContent() {
   const [loginMethod, setLoginMethod] = useState<"direct" | "clerk">("direct");
   const [email, setEmail] = useState(PRESET_PERSONAS[selectedRole].email);
   const [password, setPassword] = useState("••••••••");
+  const [showPassword, setShowPassword] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -125,9 +128,7 @@ function SignInContent() {
 
   return (
     <div className="min-h-screen bg-white text-[#0F172A] font-sans antialiased grid lg:grid-cols-12 overflow-hidden selection:bg-purple-600 selection:text-white">
-      {/* ========================================================================= */}
-      {/* LEFT COLUMN: Clean White Form (Inspired by Reference Image 1)             */}
-      {/* ========================================================================= */}
+      {/* LEFT COLUMN: Clean White Form */}
       <div className="lg:col-span-6 xl:col-span-5 p-6 sm:p-10 lg:p-14 flex flex-col justify-between overflow-y-auto max-h-screen">
         <div>
           {/* Top Brand Monogram */}
@@ -236,7 +237,7 @@ function SignInContent() {
 
             {loginMethod === "direct" ? (
               <form onSubmit={handleDirectLogin} className="space-y-4">
-                {/* Google SSO Button (Visual match with Reference Image 1) */}
+                {/* Google SSO Button */}
                 <button
                   type="button"
                   onClick={() => handleQuickPersonaLogin(selectedRole)}
@@ -294,17 +295,28 @@ function SignInContent() {
                   </div>
                 </div>
 
+                {/* Password Input with Visible Toggler */}
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">
                     Password
                   </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-purple-600 transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-purple-600 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 focus:outline-none transition-colors"
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Keep me logged in & Forgot password */}
@@ -323,7 +335,7 @@ function SignInContent() {
                   </a>
                 </div>
 
-                {/* Primary Pill Button (Matching Purple/Blue Accent in Image 1) */}
+                {/* Primary Pill Button */}
                 <button
                   type="submit"
                   className="w-full py-3 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-purple-500/25 transition-all flex items-center justify-center gap-2"
@@ -398,71 +410,66 @@ function SignInContent() {
         {/* Bottom Switch Link */}
         <div className="pt-6 text-center text-xs text-slate-500">
           <span>Don't have an account? </span>
-          <Link href={`/sign-up?role=${selectedRole}`} className="text-purple-600 font-bold hover:underline">
-            Sign up
+          <Link href="/sign-up" className="text-purple-600 font-bold hover:underline">
+            Sign up free
           </Link>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* RIGHT COLUMN: Creative Hero Banner (Inspired by Reference Image 1)       */}
-      {/* ========================================================================= */}
-      <div className="hidden lg:flex lg:col-span-6 xl:col-span-7 bg-gradient-to-tr from-[#F1F5F9] via-[#E2E8F0] to-[#F8FAFC] p-12 flex-col justify-between relative overflow-hidden border-l border-slate-200">
-        {/* Floating Pastel Geometric 3D Art (Matching Reference Image 1) */}
-        <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-gradient-to-br from-purple-400/30 to-indigo-500/20 blur-2xl pointer-events-none" />
-        <div className="absolute top-1/3 -right-10 w-64 h-64 rounded-full bg-gradient-to-tr from-cyan-400/20 to-blue-400/30 blur-2xl pointer-events-none" />
+      {/* RIGHT COLUMN: Feature Showcase */}
+      <div className="hidden lg:flex lg:col-span-6 xl:col-span-7 bg-slate-900 text-white p-12 flex-col justify-between relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/30 to-slate-900 pointer-events-none" />
 
-        {/* Floating Geometric Art Pill Shapes */}
-        <div className="absolute top-16 right-16 w-32 h-32 rounded-full bg-rose-400/40 blur-xl animate-pulse" />
-        <div className="absolute bottom-24 right-24 w-40 h-56 rounded-3xl bg-cyan-400/40 rotate-12 blur-xl" />
-        <div className="absolute bottom-10 right-72 w-36 h-36 rounded-2xl bg-purple-500/30 -rotate-12 blur-lg" />
+        <div className="relative z-10 space-y-6 max-w-xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-300 text-xs font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span>Product Operations Engine</span>
+          </div>
 
-        {/* Top Feature Pill */}
-        <div className="relative z-10">
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 backdrop-blur-md border border-slate-200 text-xs font-extrabold text-slate-800 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-purple-600 animate-ping" />
-            <span>Enterprise Product Operations Platform</span>
-          </span>
-        </div>
-
-        {/* Central Bold Banner Typography (Matching Image 1: "Changing the way the world writes") */}
-        <div className="relative z-10 max-w-xl space-y-6 my-auto">
-          <h2 className="text-4xl sm:text-5xl font-black text-[#0F172A] leading-[1.15] tracking-tight">
-            Changing the way teams build & ship products.
+          <h2 className="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-white">
+            Unify Customer Escalations, Revenue Risk & Engineering Triage
           </h2>
 
-          <p className="text-base text-slate-600 font-medium leading-relaxed">
-            ProductBrain connects customer ARR escalations, automated defect intelligence, and engineering triage into one unified workspace.
+          <p className="text-sm text-slate-300 leading-relaxed">
+            ProductBrain connects support defects directly to contract ARR value, enabling PMs to cluster issues, generate 1-click executive PRDs, and automate customer briefings.
           </p>
 
-          {/* Interactive Feature Highlights */}
-          <div className="grid sm:grid-cols-2 gap-3 pt-2">
-            <div className="p-3.5 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xs space-y-1">
-              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-blue-600" />
-                <span>Strict Department Isolation</span>
+          <div className="space-y-3 pt-2">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs font-bold text-white">PM Strategy & PRD Automation</div>
+                <div className="text-[11px] text-slate-400">
+                  Synthesize high-ARR customer feedback into structured PRDs instantly.
+                </div>
               </div>
-              <p className="text-[11px] text-slate-500 leading-snug">
-                Sales views customer ARR risk; Engineers view clean stack traces; PMs direct strategy.
-              </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xs space-y-1">
-              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                <span>Autonomous Operations</span>
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs font-bold text-white">Sales & CS Churn Radar</div>
+                <div className="text-[11px] text-slate-400">
+                  Track contract ARR exposure and dispatch plain-English client briefings.
+                </div>
               </div>
-              <p className="text-[11px] text-slate-500 leading-snug">
-                Generates 5-section executive PRDs and non-technical client briefings in seconds.
-              </p>
+            </div>
+
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs font-bold text-white">Engineering Sprint Triage</div>
+                <div className="text-[11px] text-slate-400">
+                  Inspect exception stack traces and resolve high-ARR defects first.
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Footer Telemetry */}
-        <div className="relative z-10 pt-6 border-t border-slate-300/60 flex items-center justify-between text-xs text-slate-500">
-          <span>ProductBrain v1.0 • Enterprise Edition</span>
-          <span className="font-semibold text-slate-700">100% Free Serverless Deployment</span>
+        <div className="relative z-10 pt-8 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+          <span>© 2026 ProductBrain Inc.</span>
+          <span>Enterprise Product Operations v1.0</span>
         </div>
       </div>
     </div>
@@ -471,13 +478,7 @@ function SignInContent() {
 
 export default function SignInPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-white text-slate-600 flex items-center justify-center">
-          <div className="text-xs font-bold animate-pulse">Loading Department Sign-In...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center text-xs font-bold">Loading Login...</div>}>
       <SignInContent />
     </Suspense>
   );
