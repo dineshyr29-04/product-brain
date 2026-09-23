@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import Link from "next/link";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { SignInButton, SignUpButton, Show, UserButton, OrganizationSwitcher } from "@clerk/nextjs";
 import {
   PieChart,
   Pie,
@@ -48,17 +48,39 @@ function ClerkAuthHeader() {
   }
 
   return (
-    <div className="flex items-center gap-2 border-r border-[#e0dedb] pr-4">
-      <SignedIn>
-        <UserButton fallbackRedirectUrl="/" />
-      </SignedIn>
-      <SignedOut>
-        <SignInButton mode="modal">
-          <button className="px-3 py-1.5 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] transition-all">
-            Clerk Sign In
-          </button>
-        </SignInButton>
-      </SignedOut>
+    <div className="flex items-center gap-2.5 border-r border-[#e0dedb] pr-4">
+      <Show when="signed-in">
+        <div className="flex items-center gap-2">
+          <OrganizationSwitcher
+            hidePersonal={false}
+            afterCreateOrganizationUrl="/"
+            afterLeaveOrganizationUrl="/"
+            afterSelectOrganizationUrl="/"
+            appearance={{
+              elements: {
+                rootBox: "flex items-center text-xs",
+                organizationSwitcherTrigger:
+                  "py-1 px-2.5 border border-[#e0dedb] rounded-lg bg-white hover:bg-[#eae7e3] text-[#37322F] text-xs font-semibold shadow-xs transition-all"
+              }
+            }}
+          />
+          <UserButton fallbackRedirectUrl="/" />
+        </div>
+      </Show>
+      <Show when="signed-out">
+        <div className="flex items-center gap-2">
+          <SignInButton mode="modal">
+            <button className="px-3 py-1.5 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] transition-all shadow-xs">
+              Sign In
+            </button>
+          </SignInButton>
+          <SignUpButton mode="modal">
+            <button className="px-3 py-1.5 bg-white border border-[#d8d5d0] text-[#37322F] text-xs font-semibold rounded-lg hover:bg-[#eae7e3] transition-all shadow-xs">
+              Sign Up
+            </button>
+          </SignUpButton>
+        </div>
+      </Show>
     </div>
   );
 }

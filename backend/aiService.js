@@ -15,15 +15,25 @@ if (isGeminiConfigured) {
   }
 }
 
+// Get robust Gemini generative model
+function getGeminiModel() {
+  if (!genAI) return null;
+  try {
+    return genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  } catch {
+    return genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+  }
+}
+
 export const aiService = {
   /**
    * AI-powered Document Reader, OCR & Multi-Ticket Splitter.
    * Reads raw document text / pasted logs / OCR input and splits into structured individual tickets.
    */
   async parseBulkDocumentOrOCR({ rawText, imageBase64, customers, products }) {
-    if (genAI) {
+    const model = getGeminiModel();
+    if (model) {
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         const prompt = `
 You are an intelligent Enterprise Document Reader, OCR & Ticket Classifier AI.
 Parse the following raw text or OCR document containing customer support reports, incident logs, or ticket emails.
@@ -61,10 +71,12 @@ JSON Schema per item:
         }
 
         const result = await model.generateContent(parts);
-        const textResponse = result.response.text().trim();
+        let textResponse = result.response.text().trim();
+        textResponse = textResponse.replace(/^$/gim, '').trim();
         const jsonMatch = textResponse.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
       } catch (err) {
         console.warn('Fallback Document Splitter used:', err.message);
@@ -93,9 +105,9 @@ JSON Schema per item:
    * Generates a customer-facing resolution summary when Engineering resolves a ticket.
    */
   async generateCustomerResolutionSummary({ ticketTitle, customerName, resolutionNote }) {
-    if (genAI) {
+    const model = getGeminiModel();
+    if (model) {
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         const prompt = `
 You are an expert Enterprise Product Communications Specialist at a B2B SaaS company.
 A technical issue has just been resolved by Engineering. Write a professional, reassuring 2-sentence update specifically tailored for the Sales & Customer Support team to send to the customer.
@@ -117,18 +129,17 @@ Guidelines:
       }
     }
 
-    return `Our engineering team has successfully resolved the "${ticketTitle}" issue for ${customerName}. ${
-      resolutionNote ? `Resolution details: ${resolutionNote}.` : 'The fix has been deployed to production and all operations are fully restored.'
-    }`;
+    return `Our engineering team has successfully resolved the "${ticketTitle}" issue for ${customerName}. ${resolutionNote ? `Resolution details: ${resolutionNote}.` : 'The fix has been deployed to production and all operations are fully restored.'
+      }`;
   },
 
   /**
    * Generates a complete Technical PRD for a detected Product Opportunity.
    */
   async generatePRD({ opportunityTitle, productName, ticketCount, customerCount, affectedArr }) {
-    if (genAI) {
+    const model = getGeminiModel();
+    if (model) {
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         const prompt = `
 You are a Principal Product Manager at a leading B2B SaaS Enterprise.
 Write a comprehensive, highly detailed Product Requirement Document (PRD) in clean Markdown format for a newly detected Product Opportunity.
@@ -140,7 +151,15 @@ Key Impact Data:
 - Total Customers Affected: ${customerCount}
 - Total Affected ARR: $${affectedArr.toLocaleString()}
 
-Please format the PRD strictly using clean Markdown.
+Please format the PRD strictly using clean Markdown with the following sections:
+# Product Requirement Document (PRD)
+## Executive Summary & Business Justification
+- Affected ARR & High-value customers impacted
+- Core problem analysis
+## Objectives & Success Metrics (OKRs)
+## Functional Requirements & User Stories
+## Technical Architecture & Performance Specifications
+## Phased Implementation Roadmap
 `;
         const result = await model.generateContent(prompt);
         return result.response.text();
@@ -149,35 +168,33 @@ Please format the PRD strictly using clean Markdown.
       }
     }
 
-    return `# PRD: ${opportunityTitle}
-**Product:** ${productName}  
-**Status:** Draft / Approved | **Priority:** High  
-**Revenue Impact:** $${affectedArr.toLocaleString()} ARR Protected | **Affected Accounts:** ${customerCount} Customers
+    // High quality deterministic PRD fallback
+    return `
+# Product Requirement Document (PRD)
+## 1. Executive Summary
+- **Initiative**: ${opportunityTitle}
+- **Impacted Product**: ${productName}
+- **Telemetry**: ${ticketCount} incidents escalated across ${customerCount} enterprise accounts
+- **Direct ARR at Risk**: $${affectedArr.toLocaleString()}
 
----
+## 2. Business Justification & Problem Statement
+Customer escalation telemetry indicates sustained friction in ${opportunityTitle}.
+Multiple Tier-1 enterprise clients have encountered service degradations affecting critical workflows.
 
-## 1. Executive Summary & Problem Justification
-This initiative addresses a critical recurring infrastructure limitation in **${productName}**. Over **${customerCount} enterprise customers** representing **$${affectedArr.toLocaleString()} in ARR** have experienced recurring technical friction across **${ticketCount} logged incidents**. Resolving the root cause will protect high-ARR renewals and eliminate support ticket fatigue.
+## 3. Goals & Key Results (OKRs)
+- **Objective 1**: Reduce customer escalations in this category to zero within 30 days.
+- **Objective 2**: Safeguard $${affectedArr.toLocaleString()} in annual recurring revenue.
+- **Key Result 1**: 99.99% operational uptime and sub-second p99 query latency.
 
-## 2. Customer Impact & Recurring Patterns
-- **Primary Bottleneck:** High memory consumption and query timeouts during heavy batch operations.
-- **Affected Clients:** High-tier accounts including Acme Corp, Gamma Ltd, and Delta Global.
-- **Business Risk:** Contract cancellations due to SLA violations during peak business hours.
+## 4. Technical Architecture & Implementation
+1. **Infrastructure**: Deploy resilient streaming workers with automated backpressure buffers.
+2. **Observability**: Implement real-time Prometheus metrics and PagerDuty alert triggers for query thresholds > 5s.
+3. **Database Layer**: Add compound index coverage and scale read-replicas for data intensive operations.
 
-## 3. High-Level Requirements & User Stories
-- **US-1 (Streaming Data Export):** As an enterprise admin, I want asynchronous CSV report generation so that large dataset downloads never time out.
-  - *Acceptance Criteria:* Downloads > 500MB process via background queues; email link dispatched upon completion.
-- **US-2 (Rate-Limiting & Fair Use):** As a platform architect, I want dynamic rate-limiting per account tier to prevent single-tenant OOM crashes.
-  - *Acceptance Criteria:* Rate limits scale dynamically based on account subscription tier.
-
-## 4. Proposed Technical Architecture & Core Changes
-- Implement Redis-backed BullMQ job queue for asynchronous batch exports.
-- Optimize database indexes on created_at timestamp and tenant partitioning keys.
-- Deploy automated chunking middleware to stream memory buffers directly to cloud storage.
-
-## 5. Success Metrics & Business KPIs
-- **Customer Churn:** 0% contract loss on top 20 accounts.
-- **Performance:** 99.95% API success rate during peak traffic windows.
-- **Support Ticket Reduction:** 85% drop in related support tickets within 30 days of release.`;
+## 5. Rollout Schedule
+- **Phase 1 (Sprint 1)**: Internal canary deployment & automated load testing.
+- **Phase 2 (Sprint 2)**: 10% enterprise rollout to affected accounts (${customerCount} accounts).
+- **Phase 3 (Sprint 3)**: General availability and documentation update for Sales teams.
+    `.trim();
   }
 };

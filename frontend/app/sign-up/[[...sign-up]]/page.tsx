@@ -19,7 +19,7 @@ export default function SignUpPage() {
       </div>
 
       <div className="w-full max-w-md bg-white p-2 rounded-2xl shadow-sm border border-[#e0dedb]">
-        <SignUp routing="path" path="/sign-up" />
+        <SignUp />
       </div>
 
       <div className="mt-6 text-xs text-[#828387]">

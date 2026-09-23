@@ -49,6 +49,7 @@ const initialTickets = [
     priority: 'High',
     status: 'In Progress',
     category: 'Export Performance',
+    technical_logs: 'QueryTimeoutException: 30000ms exceeded in db.driver.js:42',
     resolution_note: null,
     ai_customer_summary: null,
     created_at: new Date().toISOString(),
@@ -64,6 +65,7 @@ const initialTickets = [
     priority: 'Medium',
     status: 'Open',
     category: 'Login Problems',
+    technical_logs: 'SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com',
     resolution_note: null,
     ai_customer_summary: null,
     created_at: new Date().toISOString(),
@@ -79,8 +81,9 @@ const initialTickets = [
     priority: 'Critical',
     status: 'Resolved',
     category: 'API Reliability',
+    technical_logs: '502 Bad Gateway: Upstream rate limiter overflow [1000req/sec]',
     resolution_note: 'Increased query timeout threshold and optimized database indexes.',
-    ai_customer_summary: 'The API Gateway export query timeout issue has been resolved by our engineering team.',
+    ai_customer_summary: 'The API Gateway query timeout and rate-limiting issue has been successfully resolved by our engineering team. All API endpoints are operational.',
     created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
     resolved_at: new Date(Date.now() - 86400000).toISOString()
   },
@@ -94,6 +97,7 @@ const initialTickets = [
     priority: 'High',
     status: 'Open',
     category: 'Export Performance',
+    technical_logs: 'FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory',
     resolution_note: null,
     ai_customer_summary: null,
     created_at: new Date().toISOString(),
@@ -109,6 +113,7 @@ const initialTickets = [
     priority: 'Medium',
     status: 'Open',
     category: 'Dashboard Lag',
+    technical_logs: 'LongTaskWarning: script execution took 11840ms on renderCanvas()',
     resolution_note: null,
     ai_customer_summary: null,
     created_at: new Date().toISOString(),
@@ -141,7 +146,7 @@ const initialOpportunities = [
   }
 ];
 
-// Memory Store for fallback / instant development
+// Memory Store for fallback / instant development — Starts at 0
 const memoryDb = {
   customers: [...defaultCustomers],
   products: [...defaultProducts],
@@ -201,7 +206,7 @@ export const db = {
             product:products(id, name)
           `)
           .order('created_at', { ascending: false });
-        if (!error && data) return data;
+        if (!error && data && data.length > 0) return data;
       } catch (e) {
         console.warn('Supabase getTickets fallback:', e.message);
       }
@@ -245,7 +250,10 @@ export const db = {
         const { data, error } = await supabase.from('tickets').insert([fullTicket]).select().single();
         if (!error && data) {
           const joined = await this.getTicketById(data.id);
-          if (joined) return joined;
+          if (joined) {
+            memoryDb.tickets.unshift(joined);
+            return joined;
+          }
         }
       } catch (e) {
         console.warn('Supabase createTicket fallback:', e.message);
@@ -290,24 +298,25 @@ export const db = {
       ...(status === 'Resolved' && { resolved_at: new Date().toISOString() })
     };
 
-    if (supabase) {
-      try {
-        const { error } = await supabase.from('tickets').update(updatePayload).eq('id', id);
-        if (!error) return this.getTicketById(id);
-      } catch (e) {
-        console.warn('Supabase updateTicketStatus fallback:', e.message);
-      }
-    }
-
+    // Always update memoryDb
     const ticketIndex = memoryDb.tickets.findIndex((t) => t.id === id);
     if (ticketIndex !== -1) {
       memoryDb.tickets[ticketIndex] = {
         ...memoryDb.tickets[ticketIndex],
         ...updatePayload
       };
-      return this.getTicketById(id);
     }
-    return null;
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('tickets').update(updatePayload).eq('id', id).select();
+        if (!error && data && data.length > 0) return this.getTicketById(id);
+      } catch (e) {
+        console.warn('Supabase updateTicketStatus fallback:', e.message);
+      }
+    }
+
+    return this.getTicketById(id);
   },
 
   // --- Product Opportunities ---
@@ -321,7 +330,7 @@ export const db = {
             product:products(id, name)
           `)
           .order('affected_arr', { ascending: false });
-        if (!error && data) return data;
+        if (!error && data && data.length > 0) return data;
       } catch (e) {
         console.warn('Supabase getOpportunities fallback:', e.message);
       }
@@ -334,6 +343,12 @@ export const db = {
   },
 
   async updateOpportunityPrd(id, prdContent) {
+    const opp = memoryDb.product_opportunities.find((o) => o.id === id);
+    if (opp) {
+      opp.prd_content = prdContent;
+      opp.status = 'PRD Created';
+    }
+
     if (supabase) {
       try {
         const { error } = await supabase
@@ -346,13 +361,7 @@ export const db = {
       }
     }
 
-    const opp = memoryDb.product_opportunities.find((o) => o.id === id);
-    if (opp) {
-      opp.prd_content = prdContent;
-      opp.status = 'PRD Created';
-      return true;
-    }
-    return false;
+    return Boolean(opp);
   },
 
   // --- Auto-Opportunity Detection Helper ---

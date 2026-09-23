@@ -19,7 +19,7 @@ export default function SignInPage() {
       </div>
 
       <div className="w-full max-w-md bg-white p-2 rounded-2xl shadow-sm border border-[#e0dedb]">
-        <SignIn routing="path" path="/sign-in" />
+        <SignIn />
       </div>
 
       <div className="mt-6 text-xs text-[#828387]">
