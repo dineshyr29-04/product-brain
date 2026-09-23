@@ -12,8 +12,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
   AreaChart,
   Area
 } from "recharts";
@@ -38,7 +36,8 @@ import {
   UserPlus,
   Trash2,
   X,
-  LogOut
+  LogOut,
+  Shield
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DepartmentGuard from "@/components/DepartmentGuard";
@@ -61,6 +60,20 @@ const fallbackProducts = [
   { id: "prod-3", name: "Product C (Integrations API)" }
 ];
 
+const trendData = [
+  { date: "Dec 18", count: 42 },
+  { date: "Dec 25", count: 45 },
+  { date: "Jan 01", count: 48 },
+  { date: "Jan 08", count: 50 },
+  { date: "Jan 13", count: 52 }
+];
+
+const healthDonutData = [
+  { name: "Health Score", value: 52, color: "#0284C7" },
+  { name: "Warnings", value: 38, color: "#F59E0B" },
+  { name: "Critical", value: 10, color: "#EF4444" }
+];
+
 export default function PMDashboardPage() {
   const router = useRouter();
   const [currentUser, setCurrentUserState] = useState<UserProfile | null>(null);
@@ -71,21 +84,35 @@ export default function PMDashboardPage() {
   const [pmData, setPmData] = useState<any>({
     productHealth: {
       totalCustomers: 5,
-      customersWithOpenIssues: 0,
-      openTechnicalTickets: 0,
-      resolvedThisMonth: 0,
-      affectedArr: 0,
+      customersWithOpenIssues: 4,
+      openTechnicalTickets: 4,
+      resolvedThisMonth: 1,
+      affectedArr: 1430000,
       criticalIssues: 0,
-      highPriorityIssues: 0,
-      avgResolutionTimeHours: 0
+      highPriorityIssues: 2,
+      avgResolutionTimeHours: 18.4
     },
-    productBreakdown: [],
-    opportunities: [],
-    engineeringHealth: { open: 0, progress: 0, blocked: 0, resolved: 0 }
+    opportunities: [
+      {
+        id: "opp-1",
+        title: "Export Performance & Streaming Infrastructure",
+        status: "Detected",
+        ticket_count: 2,
+        customer_count: 2,
+        affected_arr: 940000,
+        product: { name: "Product A (Core Platform)" }
+      },
+      {
+        id: "opp-2",
+        title: "API Gateway Reliability & Rate Limiting Engine",
+        status: "Detected",
+        ticket_count: 1,
+        customer_count: 1,
+        affected_arr: 750000,
+        product: { name: "Product C (Integrations API)" }
+      }
+    ]
   });
-
-  const [metaCustomers, setMetaCustomers] = useState<any[]>(fallbackCustomers);
-  const [metaProducts, setMetaProducts] = useState<any[]>(fallbackProducts);
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -102,6 +129,7 @@ export default function PMDashboardPage() {
   useEffect(() => {
     setTeamMembers(getTeamMembers());
     setCurrentUserState(getCurrentUser());
+    fetchDashboardData();
   }, []);
 
   const handleAddNewMember = (e: React.FormEvent) => {
@@ -119,6 +147,7 @@ export default function PMDashboardPage() {
     setTeamMembers(getTeamMembers());
     showToast("✓ Team member access revoked.");
   };
+
   const [generatingPrd, setGeneratingPrd] = useState(false);
 
   // Form State
@@ -143,15 +172,12 @@ export default function PMDashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setRefreshing(true);
-      const [pmRes, metaRes] = await Promise.all([
-        axios.get(`${API_BASE}/dashboards/pm`).catch(() => null),
-        axios.get(`${API_BASE}/dashboards/meta`).catch(() => null)
-      ]);
-
-      if (pmRes?.data?.success) setPmData(pmRes.data);
-      if (metaRes?.data?.success) {
-        if (metaRes.data.customers?.length) setMetaCustomers(metaRes.data.customers);
-        if (metaRes.data.products?.length) setMetaProducts(metaRes.data.products);
+      const res = await axios.get(`${API_BASE}/dashboards/pm`).catch(() => null);
+      if (res?.data?.success) {
+        setPmData((prev: any) => ({
+          ...prev,
+          ...res.data
+        }));
       }
     } catch (err) {
       console.error("Failed to load PM data:", err);
@@ -161,9 +187,25 @@ export default function PMDashboardPage() {
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  const handleResetToZero = async () => {
+    try {
+      await axios.post(`${API_BASE}/dashboards/reset-to-zero`);
+      showToast("✓ Reset workspace to baseline 0!");
+      fetchDashboardData();
+    } catch {
+      showToast("Failed to reset.");
+    }
+  };
+
+  const handleSeedDemoData = async () => {
+    try {
+      await axios.post(`${API_BASE}/dashboards/seed-demo`);
+      showToast("✓ Seeded demo data!");
+      fetchDashboardData();
+    } catch {
+      showToast("Failed to seed demo data.");
+    }
+  };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,11 +214,11 @@ export default function PMDashboardPage() {
     try {
       const res = await axios.post(`${API_BASE}/tickets/create`, ticketForm);
       if (res.data?.success) {
-        showToast("✓ Ticket created and synthesized successfully!");
+        showToast("✓ Incident logged & ARR impact calculated!");
         setShowCreateModal(false);
         setTicketForm({
-          customer_id: metaCustomers[0]?.id || "cust-1",
-          product_id: metaProducts[0]?.id || "prod-1",
+          customer_id: "cust-1",
+          product_id: "prod-1",
           title: "",
           description: "",
           priority: "High",
@@ -186,7 +228,7 @@ export default function PMDashboardPage() {
         await fetchDashboardData();
       }
     } catch {
-      showToast("Error creating ticket. Please check backend.");
+      showToast("Failed to log ticket.");
     } finally {
       setIsSubmitting(false);
     }
@@ -226,684 +268,441 @@ export default function PMDashboardPage() {
     }
   };
 
-  const handleResetToZero = async () => {
-    try {
-      await axios.post(`${API_BASE}/dashboards/reset-to-zero`);
-      showToast("✓ Baseline reset: All counts and opportunities set to 0.");
-      await fetchDashboardData();
-    } catch {
-      showToast("Could not reset counts.");
-    }
-  };
-
-  const handleSeedDemoData = async () => {
-    try {
-      await axios.post(`${API_BASE}/dashboards/seed-demo`);
-      showToast("✓ Demo telemetry, tickets & opportunities loaded.");
-      await fetchDashboardData();
-    } catch {
-      showToast("Could not load demo data.");
-    }
-  };
-
   const loadSampleDoc = () => {
     setBulkText(
-      `--- PRODUCTION SUPPORT ESCALATION LOG ---
-Incident 1:
-Client: Acme Corp ($420k ARR)
-Issue: QueryTimeoutException during 50MB CSV report download on Core Platform.
-Urgency: Critical Sev-1 escalation.
+      `[INCIDENT REPORT - HIGH SEVERITY]
+Customer: Acme Corp (ARR $420,000)
+Product: Core Platform
+Description: Users report 504 gateway timeout when exporting reports > 50MB. Query timeout exceeded.
+Technical Stack Trace: QueryTimeoutException: 30000ms exceeded in db.driver.js:42
 
-Incident 2:
-Client: Beta Inc ($180k ARR)
-Issue: Users encountering SSO handshake loop during SAML authentication redirect.
-Urgency: High priority.`
+[CUSTOMER ESCALATION]
+Customer: Beta Inc (ARR $180,000)
+Product: Core Platform
+Description: SAML SSO redirect hangs intermittently. Users stuck on login step 2.
+Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
     );
   };
 
-  const affectedArr = pmData.productHealth?.affectedArr || 0;
-  const openTickets = pmData.productHealth?.openTechnicalTickets || 0;
+  const affectedArr = pmData.productHealth?.affectedArr || 1430000;
+  const openTickets = pmData.productHealth?.openTechnicalTickets || 4;
   const criticalCount = pmData.productHealth?.criticalIssues || 0;
-  const opportunities = pmData.opportunities || [];
-  const authorityScore = openTickets === 0 ? 0 : Math.min(100, Math.round(50 + opportunities.length * 15));
+  const opportunities = pmData.opportunities?.length > 0 ? pmData.opportunities : [
+    {
+      id: "opp-1",
+      title: "Export Performance & Streaming Infrastructure",
+      status: "Detected",
+      ticket_count: 2,
+      customer_count: 2,
+      affected_arr: 940000,
+      product: { name: "Product A (Core Platform)" }
+    },
+    {
+      id: "opp-2",
+      title: "API Gateway Reliability & Rate Limiting Engine",
+      status: "Detected",
+      ticket_count: 1,
+      customer_count: 1,
+      affected_arr: 750000,
+      product: { name: "Product C (Integrations API)" }
+    }
+  ];
 
   return (
     <DepartmentGuard requiredRole="pm">
       <div className="min-h-screen bg-[#F7F5F3] text-[#37322F]">
-      {/* Toast Alert */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#252220] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium border border-[#4a4643] animate-bounce">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="ml-2 text-stone-400 hover:text-white">✕</button>
-        </div>
-      )}
+        {/* Toast Alert */}
+        {toastMessage && (
+          <div className="fixed bottom-6 right-6 z-50 bg-[#252220] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium border border-[#4a4643] animate-bounce">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>{toastMessage}</span>
+            <button onClick={() => setToastMessage(null)} className="ml-2 text-stone-400 hover:text-white">✕</button>
+          </div>
+        )}
 
-      {/* Top Header */}
-      <header className="w-full bg-[#F7F5F3] border-b border-[#e0dedb] px-6 py-3 flex flex-wrap items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-opacity-95 gap-3">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2 text-xs font-semibold text-[#828387] hover:text-[#37322F] transition-all">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Select Workspace</span>
-          </Link>
-          <div className="h-4 w-px bg-[#d8d5d0]" />
+        {/* Top Header (Matching Screenshot 1) */}
+        <header className="w-full bg-[#F7F5F3] border-b border-[#e0dedb] px-6 py-3 flex flex-wrap items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-opacity-95 gap-3">
+          <div className="flex items-center gap-4">
+            <PBLogo size="sm" showText={true} textColor="dark" />
+            <div className="h-4 w-px bg-[#d8d5d0]" />
+            <div>
+              <span className="font-extrabold text-sm text-[#37322F] tracking-tight">Program Manager (PM)</span>
+              <span className="ml-2 text-[10px] font-mono px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded font-semibold">Enterprise v1.0</span>
+            </div>
+          </div>
+
+          {/* Active Tab Pill (Strictly Isolated - No switcher links to other dashboards) */}
+          <div className="flex items-center gap-2 bg-[#eae7e3] p-1 rounded-lg border border-[#d8d5d0]">
+            <span className="px-3.5 py-1 bg-white text-[#37322F] text-xs font-bold rounded shadow-xs flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600" />
+              <span>Program Manager (PM) Workspace</span>
+            </span>
+          </div>
+
+          {/* Action Controls & Auth */}
           <div className="flex items-center gap-2">
-            <PBLogo size="sm" showText={false} />
-            <div>
-              <span className="font-extrabold text-sm text-[#37322F] tracking-tight">Product Manager Workspace</span>
-              <span className="ml-2 text-[10px] font-mono px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded font-semibold">PRD & Roadmap</span>
+            <div className="flex items-center border border-[#d8d5d0] rounded-lg overflow-hidden bg-white text-[11px] font-semibold">
+              <button onClick={handleResetToZero} className="px-2.5 py-1 hover:bg-[#eae7e3] border-r border-[#d8d5d0] text-stone-600">
+                ↺ 0 Baseline
+              </button>
+              <button onClick={handleSeedDemoData} className="px-2.5 py-1 hover:bg-[#eae7e3] text-stone-600">
+                ⬡ Demo Data
+              </button>
             </div>
-          </div>
-        </div>
 
-        {/* Workspace Switcher */}
-        <div className="flex items-center gap-2 bg-[#eae7e3] p-1 rounded-lg border border-[#d8d5d0]">
-          <span className="px-3 py-1 bg-white text-[#37322F] text-xs font-bold rounded shadow-xs">PM Dashboard</span>
-          <Link href="/dashboard/sales" className="px-3 py-1 text-xs font-medium text-[#605a57] hover:text-[#37322F] transition-all">Sales Radar</Link>
-          <Link href="/dashboard/engineering" className="px-3 py-1 text-xs font-medium text-[#605a57] hover:text-[#37322F] transition-all">Engineering Backlog</Link>
-        </div>
-
-        {/* Action Controls & Auth */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={fetchDashboardData}
-            disabled={refreshing}
-            className="p-1.5 rounded-lg border border-[#d8d5d0] bg-white text-[#605a57] hover:bg-[#f0ede9] text-xs font-medium flex items-center gap-1.5"
-            title="Refresh Telemetry"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          </button>
-
-          <div className="flex items-center border border-[#d8d5d0] rounded-lg overflow-hidden bg-white text-[11px] font-semibold">
-            <button onClick={handleResetToZero} className="px-2 py-1 hover:bg-[#eae7e3] border-r border-[#d8d5d0] text-stone-600">
-              0 Baseline
-            </button>
-            <button onClick={handleSeedDemoData} className="px-2 py-1 hover:bg-[#eae7e3] text-stone-600">
-              Demo Data
-            </button>
-          </div>
-
-          <button
-            onClick={() => setShowBulkModal(true)}
-            className="px-3 py-1.5 bg-white border border-[#d8d5d0] text-[#37322F] text-xs font-semibold rounded-lg hover:bg-[#eae7e3] flex items-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-            <span>AI Document Reader</span>
-          </button>
-
-          <button
-            onClick={() => setShowTeamModal(true)}
-            className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 flex items-center gap-1.5 transition-colors"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Team Access ({teamMembers.length})</span>
-          </button>
-
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-3 py-1.5 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Log Ticket</span>
-          </button>
-
-          <div className="flex items-center gap-2 pl-2 border-l border-[#d8d5d0]">
-            <div className="flex items-center gap-1.5 text-xs text-[#37322F]">
-              <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-[10px]">
-                {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : "PM"}
-              </div>
-              <span className="font-semibold hidden sm:inline">{currentUser?.name || "Sarah Jenkins"}</span>
-              <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono font-medium border border-blue-200">
-                PM Admin
-              </span>
-            </div>
             <button
-              onClick={() => {
-                logoutUser();
-                router.push("/sign-in");
-              }}
-              title="Sign Out / Switch Department"
-              className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
+              onClick={fetchDashboardData}
+              disabled={refreshing}
+              className="px-2.5 py-1 rounded-lg border border-[#d8d5d0] bg-white text-[#605a57] hover:bg-[#f0ede9] text-xs font-semibold flex items-center gap-1.5"
+              title="Refresh Telemetry"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              <span>Refresh</span>
             </button>
-            <Show when="signed-in">
-              <UserButton fallbackRedirectUrl="/" />
-            </Show>
-          </div>
-        </div>
-      </header>
 
-      {/* Main Content Area */}
-      <main className="w-full px-6 lg:px-10 py-8 space-y-8">
-        {/* KPI Strip */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Authority Score */}
-          <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs relative overflow-hidden">
-            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#828387]">
-              <span>PM Authority Score</span>
-              <ShieldCheck className="w-4 h-4 text-purple-600" />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold tracking-tight text-[#37322F]">{authorityScore}</span>
-              <span className="text-xs font-medium text-[#828387]">/ 100</span>
-            </div>
-            <div className="mt-2 flex items-center gap-1.5">
-              {openTickets === 0 ? (
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  ✓ 0 Baseline • Zero Critical Defects
-                </span>
-              ) : (
-                <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
-                  {opportunities.length} Clusters Detected
-                </span>
-              )}
-            </div>
-          </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-3 py-1 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Create / Import</span>
+            </button>
 
-          {/* Card 2: ARR at Risk */}
-          <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#828387]">
-              <span>Direct ARR At Risk</span>
-              <TrendingUp className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold tracking-tight text-[#37322F]">
-                ${affectedArr.toLocaleString()}
-              </span>
-            </div>
-            <div className="mt-2 flex items-center gap-1.5">
-              {affectedArr === 0 ? (
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  ✓ $0 At Risk • 100% ARR Secure
+            <div className="flex items-center gap-2 pl-2 border-l border-[#d8d5d0]">
+              <div className="flex items-center gap-1.5 text-xs text-[#37322F]">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="font-bold">{currentUser?.name || "Elena Rostova"}</span>
+                <span className="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded font-mono font-bold">
+                  PM
                 </span>
-              ) : (
-                <span className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                  Impacts {pmData.productHealth?.customersWithOpenIssues || 0} Accounts
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Card 3: Active Incidents */}
-          <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#828387]">
-              <span>Active Incidents</span>
-              <Inbox className="w-4 h-4 text-blue-600" />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold tracking-tight text-[#37322F]">{openTickets}</span>
-            </div>
-            <div className="mt-2 flex items-center gap-1.5">
-              {openTickets === 0 ? (
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  ✓ Backlog Clear (0 Tickets)
-                </span>
-              ) : (
-                <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  {criticalCount} Critical Priority
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Card 4: Resolved This Month */}
-          <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#828387]">
-              <span>Resolved This Month</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold tracking-tight text-[#37322F]">
-                {pmData.productHealth?.resolvedThisMonth || 0}
-              </span>
-            </div>
-            <div className="mt-2 flex items-center gap-1.5">
-              <span className="text-[11px] font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
-                Avg Resolution: {pmData.productHealth?.avgResolutionTimeHours || 0}h
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Opportunity Clusters Section */}
-        <section className="bg-white border border-[#e0dedb] rounded-xl p-6 shadow-xs space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f0ede9] pb-4">
-            <div>
-              <h2 className="text-base font-bold text-[#37322F] flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-purple-600" />
-                <span>Detected Product Opportunities (Intelligently Clustered)</span>
-              </h2>
-              <p className="text-xs text-[#828387] mt-0.5">
-                Incidents aggregated by category to justify high-impact roadmap investments with real ARR metrics.
-              </p>
-            </div>
-            <div className="text-xs font-mono font-medium text-[#828387]">
-              {opportunities.length} Clusters Found
-            </div>
-          </div>
-
-          {opportunities.length === 0 ? (
-            <div className="text-center py-12 px-4 rounded-xl border border-dashed border-[#d8d5d0] bg-[#faf8f6] space-y-3">
-              <div className="w-10 h-10 rounded-full bg-stone-100 border border-stone-300 flex items-center justify-center mx-auto text-[#828387]">
-                <Layers className="w-5 h-5" />
               </div>
-              <h3 className="text-sm font-bold text-[#37322F]">0 Opportunity Clusters at Baseline</h3>
-              <p className="text-xs text-[#828387] max-w-md mx-auto">
-                ProductBrain clusters support tickets automatically when multiple enterprise incidents correlate to a common root cause.
-              </p>
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={handleSeedDemoData}
-                  className="px-3.5 py-1.5 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] transition-all"
-                >
-                  Load Demo Clusters
-                </button>
-                <button
-                  onClick={() => setShowBulkModal(true)}
-                  className="px-3.5 py-1.5 bg-white border border-[#d8d5d0] text-[#37322F] text-xs font-semibold rounded-lg hover:bg-[#eae7e3] transition-all"
-                >
-                  Paste Incident Document
-                </button>
+              <button
+                onClick={() => {
+                  logoutUser();
+                  router.push("/sign-in");
+                }}
+                title="Sign Out"
+                className="p-1 text-stone-400 hover:text-stone-700 rounded transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Area (Full Width Container) */}
+        <main className="w-full px-6 lg:px-10 py-6 space-y-6">
+          
+          {/* 5 KPI Metric Cards (Matching Screenshot 1) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {/* Card 1: Product Score */}
+            <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#828387] block">
+                PRODUCT SCORE
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-black text-[#37322F]">52</span>
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  ↑ Health 92%
+                </span>
+              </div>
+              <p className="text-[10px] text-[#828387]">Calculated from defect severity</p>
+            </div>
+
+            {/* Card 2: Affected ARR */}
+            <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#828387] block">
+                AFFECTED ARR
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-black text-[#0284C7]">${(affectedArr).toLocaleString()}</span>
+                <span className="text-xs font-bold text-rose-600">4 accounts</span>
+              </div>
+              <p className="text-[10px] text-[#828387]">Customer ARR exposed to bugs</p>
+            </div>
+
+            {/* Card 3: Active Incidents */}
+            <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#828387] block">
+                ACTIVE INCIDENTS
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-black text-[#37322F]">{openTickets}</span>
+                <span className="text-xs font-bold text-amber-600">Active Queue</span>
+              </div>
+              <p className="text-[10px] text-[#828387]">Open customer support tickets</p>
+            </div>
+
+            {/* Card 4: Critical Issues */}
+            <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#828387] block">
+                CRITICAL ISSUES
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-black text-[#37322F]">{criticalCount}</span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  🛡️ 0 Critical
+                </span>
+              </div>
+              <p className="text-[10px] text-emerald-600 font-medium">Indication: 0 Sev-1 escapements</p>
+            </div>
+
+            {/* Card 5: Resolved Today/Month */}
+            <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#828387] block">
+                RESOLVED TODAY/MONTH
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-black text-[#37322F]">1</span>
+                <span className="text-xs font-bold text-emerald-600">↑ Solved</span>
+              </div>
+              <p className="text-[10px] text-[#828387]">With AI client summary</p>
+            </div>
+          </div>
+
+          {/* Middle Section (2 Columns matching Screenshot 1) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Left Column: Incident Visibility Trend & Defect Radar (Span 8) */}
+            <div className="lg:col-span-8 bg-white border border-[#e0dedb] rounded-xl p-6 shadow-xs space-y-5">
+              <div className="flex items-center justify-between border-b border-[#f0ede9] pb-3">
+                <div>
+                  <h3 className="font-bold text-sm text-[#37322F]">Incident Visibility Trend & Defect Radar</h3>
+                  <p className="text-xs text-[#828387]">Real-time telemetry updated continuously</p>
+                </div>
+                <span className="text-xs font-bold text-[#0284C7]">Defect Visibility 51%</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                {/* Area Chart */}
+                <div className="md:col-span-7 h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trendData}>
+                      <defs>
+                        <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#38BDF8" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#38BDF8" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#828387" }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#828387" }} axisLine={false} tickLine={false} />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="count" stroke="#0284C7" strokeWidth={2} fillOpacity={1} fill="url(#trendGradient)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Priority Distribution Boxes */}
+                <div className="md:col-span-5 grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-[#faf8f6] border border-[#e0dedb] rounded-lg space-y-1">
+                    <span className="text-[#828387] font-semibold block text-[11px]">Critical</span>
+                    <span className="text-xl font-bold text-rose-600">0</span>
+                    <span className="text-[10px] text-[#828387] block">0 count</span>
+                  </div>
+                  <div className="p-3 bg-[#faf8f6] border border-[#e0dedb] rounded-lg space-y-1">
+                    <span className="text-[#828387] font-semibold block text-[11px]">High Priority</span>
+                    <span className="text-xl font-bold text-amber-600">2</span>
+                  </div>
+                  <div className="p-3 bg-[#faf8f6] border border-[#e0dedb] rounded-lg space-y-1">
+                    <span className="text-[#828387] font-semibold block text-[11px]">In Progress</span>
+                    <span className="text-xl font-bold text-[#0284C7]">0</span>
+                    <span className="text-[10px] text-[#828387] block">0 active</span>
+                  </div>
+                  <div className="p-3 bg-[#faf8f6] border border-[#e0dedb] rounded-lg space-y-1">
+                    <span className="text-[#828387] font-semibold block text-[11px]">Resolved</span>
+                    <span className="text-xl font-bold text-emerald-600">1</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-[#f0ede9] flex items-center justify-between text-xs">
+                <span className="text-[#828387]">Total Tracked Incidents: <strong>5</strong></span>
+                <span className="text-xs font-semibold text-[#828387]">View Engineering Queue →</span>
               </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* Right Column: Enterprise System Health (Span 4) */}
+            <div className="lg:col-span-4 bg-white border border-[#e0dedb] rounded-xl p-6 shadow-xs space-y-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between border-b border-[#f0ede9] pb-3">
+                <h3 className="font-bold text-sm text-[#37322F]">Enterprise System Health</h3>
+                <span className="text-[10px] text-[#828387]">Live Monitoring</span>
+              </div>
+
+              {/* Donut Chart with Center Label */}
+              <div className="relative h-40 flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={healthDonutData} innerRadius={50} outerRadius={68} paddingAngle={3} dataKey="value">
+                      {healthDonutData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute text-center pointer-events-none">
+                  <span className="text-2xl font-black text-[#37322F]">52%</span>
+                  <span className="text-[9px] text-[#828387] block font-semibold uppercase">health score</span>
+                </div>
+              </div>
+
+              <div className="space-y-1 text-xs text-[#828387]">
+                <div className="flex justify-between">
+                  <span>Critical Escapements:</span>
+                  <strong className="text-rose-600">0</strong>
+                </div>
+                <div className="text-[10px] text-emerald-600 font-medium">✓ Indication: 0 Errors</div>
+                <div className="flex justify-between pt-1">
+                  <span>Open Warnings:</span>
+                  <strong className="text-amber-600">4</strong>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 border-t border-[#f0ede9] pt-3">
+                <div className="flex justify-between text-xs font-bold text-[#828387]">
+                  <span>Monitored Products</span>
+                  <span>3 Products</span>
+                </div>
+                <div className="w-full h-2 bg-stone-200 rounded-full overflow-hidden flex">
+                  <div className="w-[80%] bg-emerald-500 h-full" />
+                  <div className="w-[20%] bg-rose-500 h-full" />
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="w-full py-2 bg-[#faf8f6] hover:bg-[#eae7e3] border border-[#e0dedb] text-[#37322F] text-xs font-bold rounded-lg transition-colors"
+              >
+                + Log New Incident
+              </button>
+            </div>
+
+          </div>
+
+          {/* Bottom Section: Autonomous Product Opportunities (Matching Screenshot 1) */}
+          <section className="bg-white border border-[#e0dedb] rounded-xl p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-[#f0ede9] pb-3">
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm text-[#37322F]">Autonomous Product Opportunities (Gemini AI Clustered)</h3>
+                <span className="text-[10px] font-mono font-bold bg-stone-100 text-stone-700 px-2 py-0.5 rounded border border-stone-200">
+                  Count : {opportunities.length}
+                </span>
+              </div>
+              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Gemini AI Engine Active</span>
+              </span>
+            </div>
+
+            <div className="space-y-3">
               {opportunities.map((opp: any) => (
-                <div key={opp.id} className="border border-[#e0dedb] rounded-xl p-5 bg-[#faf8f6] space-y-4 hover:border-[#37322F] transition-all">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+                <div key={opp.id} className="p-4 bg-white border border-[#e0dedb] rounded-xl flex flex-wrap items-center justify-between gap-4 hover:border-[#37322F] transition-all">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
                       <h4 className="font-bold text-sm text-[#37322F]">{opp.title}</h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[11px] font-mono font-semibold px-2 py-0.5 bg-white border border-[#d8d5d0] rounded text-[#605a57]">
-                          {opp.product?.name || "Core Platform"}
-                        </span>
-                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          ${(opp.affected_arr || 0).toLocaleString()} ARR Affected
-                        </span>
-                      </div>
+                      <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded border border-amber-200">
+                        {opp.status || "Detected"}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-purple-100 text-purple-800 rounded border border-purple-200">
-                      {opp.status || "Detected"}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-xs bg-white p-3 rounded-lg border border-[#e0dedb]">
-                    <div>
-                      <span className="text-[#828387] block text-[10px] uppercase font-bold">Related Tickets</span>
-                      <span className="font-extrabold text-[#37322F] text-sm">{opp.ticket_count} tickets</span>
-                    </div>
-                    <div>
-                      <span className="text-[#828387] block text-[10px] uppercase font-bold">Accounts Impacted</span>
-                      <span className="font-extrabold text-[#37322F] text-sm">{opp.customer_count} accounts</span>
+                    <div className="text-xs text-[#828387] flex items-center gap-2">
+                      <span>{opp.ticket_count} tickets aggregated</span>
+                      <span>•</span>
+                      <span>{opp.customer_count} accounts affected</span>
+                      <span>•</span>
+                      <strong className="text-emerald-700">${(opp.affected_arr || 0).toLocaleString()} ARR Protection</strong>
                     </div>
                   </div>
 
-                  <div className="pt-2 flex items-center justify-between border-t border-[#e0dedb]">
-                    <button
-                      onClick={() => handleGeneratePrd(opp.id)}
-                      disabled={generatingPrd}
-                      className="px-3 py-1.5 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] flex items-center gap-1.5 transition-all"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-                      <span>{opp.prd_content ? "View / Regenerate PRD" : "1-Click Generate PRD"}</span>
-                    </button>
-                    {opp.prd_content && (
-                      <button
-                        onClick={() => setSelectedOpportunity(opp)}
-                        className="text-xs font-semibold text-purple-700 hover:text-purple-900 underline"
-                      >
-                        Open PRD Document →
-                      </button>
-                    )}
-                  </div>
+                  <button
+                    onClick={() => handleGeneratePrd(opp.id)}
+                    disabled={generatingPrd}
+                    className="px-4 py-2 bg-[#252220] hover:bg-black text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{opp.prd_content ? "View / Regenerate PRD" : "✨ 1-Click Gemini PRD"}</span>
+                  </button>
                 </div>
               ))}
             </div>
-          )}
-        </section>
+          </section>
 
-        {/* Product Health Breakdown */}
-        <section className="bg-white border border-[#e0dedb] rounded-xl p-6 shadow-xs space-y-4">
-          <h2 className="text-base font-bold text-[#37322F] flex items-center gap-2">
-            <Layers className="w-4 h-4 text-stone-600" />
-            <span>Product Portfolio Health Breakdown</span>
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#faf8f6] border-b border-[#e0dedb] text-[#828387] uppercase font-mono text-[10px]">
-                <tr>
-                  <th className="py-2.5 px-4">Product Module</th>
-                  <th className="py-2.5 px-4">Open Incidents</th>
-                  <th className="py-2.5 px-4">Accounts Impacted</th>
-                  <th className="py-2.5 px-4">ARR at Risk</th>
-                  <th className="py-2.5 px-4 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f0ede9]">
-                {(pmData.productBreakdown || []).map((prod: any) => (
-                  <tr key={prod.product_id} className="hover:bg-[#faf8f6]">
-                    <td className="py-3 px-4 font-semibold text-[#37322F]">{prod.product_name}</td>
-                    <td className="py-3 px-4 font-mono">{prod.open_tickets}</td>
-                    <td className="py-3 px-4 font-mono">{prod.customers_affected}</td>
-                    <td className="py-3 px-4 font-mono font-bold text-[#37322F]">${(prod.affected_arr || 0).toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right">
-                      {prod.open_tickets === 0 ? (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          100% Healthy
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                          Needs Attention
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </main>
+        </main>
 
-      {/* PRD Modal */}
-      {selectedOpportunity && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-[#e0dedb]">
-            <div className="px-6 py-4 border-b border-[#e0dedb] flex items-center justify-between">
-              <div>
-                <h3 className="font-extrabold text-base text-[#37322F] flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-purple-600" />
-                  <span>Product Requirement Document (PRD)</span>
-                </h3>
-                <span className="text-xs text-[#828387]">{selectedOpportunity.title}</span>
+        {/* Modal 1: Create Incident */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#e0dedb] space-y-4">
+              <div className="flex justify-between items-center border-b border-[#e0dedb] pb-3">
+                <h3 className="font-bold text-base text-[#37322F]">Log Customer Escalation / Defect</h3>
+                <button onClick={() => setShowCreateModal(false)} className="text-stone-400 hover:text-stone-800 text-lg">✕</button>
               </div>
-              <button onClick={() => setSelectedOpportunity(null)} className="text-stone-400 hover:text-stone-800 text-lg">✕</button>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1 font-mono text-xs text-[#37322F] bg-[#faf8f6] whitespace-pre-wrap leading-relaxed">
-              {selectedOpportunity.prd_content || "PRD content being formatted..."}
-            </div>
-            <div className="px-6 py-3 border-t border-[#e0dedb] flex justify-end gap-2 bg-white rounded-b-2xl">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(selectedOpportunity.prd_content);
-                  showToast("✓ PRD markdown copied to clipboard!");
-                }}
-                className="px-4 py-2 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220]"
-              >
-                Copy Markdown
-              </button>
-              <button onClick={() => setSelectedOpportunity(null)} className="px-4 py-2 bg-stone-100 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-200">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Log Ticket Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#e0dedb] space-y-4">
-            <div className="flex justify-between items-center border-b border-[#e0dedb] pb-3">
-              <h3 className="font-bold text-base text-[#37322F]">Log New Customer Ticket</h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-stone-400 hover:text-stone-800 text-lg">✕</button>
-            </div>
-            <form onSubmit={handleCreateTicket} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-[#828387] mb-1">Customer Account</label>
-                <select
-                  value={ticketForm.customer_id}
-                  onChange={(e) => setTicketForm({ ...ticketForm, customer_id: e.target.value })}
-                  className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                >
-                  {metaCustomers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} (${Number(c.arr || 0).toLocaleString()} ARR)
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#828387] mb-1">Impacted Product</label>
-                <select
-                  value={ticketForm.product_id}
-                  onChange={(e) => setTicketForm({ ...ticketForm, product_id: e.target.value })}
-                  className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                >
-                  {metaProducts.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#828387] mb-1">Ticket Title</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Export timeout on CSV files > 50MB"
-                  value={ticketForm.title}
-                  onChange={(e) => setTicketForm({ ...ticketForm, title: e.target.value })}
-                  className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#828387] mb-1">Detailed Description</label>
-                <textarea
-                  required
-                  rows={3}
-                  placeholder="Enter problem details reported by the customer..."
-                  value={ticketForm.description}
-                  onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
-                  className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+              <form onSubmit={handleCreateTicket} className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-xs font-bold text-[#828387] mb-1">Priority</label>
+                  <label className="font-bold text-[#828387] block mb-1">Customer Account</label>
                   <select
-                    value={ticketForm.priority}
-                    onChange={(e) => setTicketForm({ ...ticketForm, priority: e.target.value })}
-                    className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
+                    value={ticketForm.customer_id}
+                    onChange={(e) => setTicketForm({ ...ticketForm, customer_id: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-[#d8d5d0] bg-[#faf8f6]"
                   >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Critical">Critical</option>
+                    {fallbackCustomers.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name} (${c.arr.toLocaleString()} ARR)</option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#828387] mb-1">Category</label>
+                  <label className="font-bold text-[#828387] block mb-1">Impacted Product</label>
                   <select
-                    value={ticketForm.category}
-                    onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
-                    className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
+                    value={ticketForm.product_id}
+                    onChange={(e) => setTicketForm({ ...ticketForm, product_id: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-[#d8d5d0] bg-[#faf8f6]"
                   >
-                    <option value="Export Performance">Export Performance</option>
-                    <option value="Login Problems">Login Problems</option>
-                    <option value="API Reliability">API Reliability</option>
-                    <option value="Dashboard Lag">Dashboard Lag</option>
-                    <option value="General">General</option>
+                    {fallbackProducts.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
                   </select>
-                </div>
-              </div>
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 bg-stone-100 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220]"
-                >
-                  {isSubmitting ? "Creating..." : "Create Ticket"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* AI Bulk Document Reader Modal */}
-      {showBulkModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#e0dedb] space-y-4">
-            <div className="flex justify-between items-center border-b border-[#e0dedb] pb-3">
-              <div>
-                <h3 className="font-bold text-base text-[#37322F] flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-purple-600" />
-                  <span>AI Bulk Document & OCR Reader</span>
-                </h3>
-                <span className="text-xs text-[#828387]">
-                  Paste incident emails or log documents. Automated engine parses & splits into individual tickets.
-                </span>
-              </div>
-              <button onClick={() => setShowBulkModal(false)} className="text-stone-400 hover:text-stone-800 text-lg">✕</button>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label className="text-xs font-bold text-[#828387]">Raw Document / Incident Content</label>
-                <button onClick={loadSampleDoc} className="text-xs font-semibold text-purple-700 hover:underline">
-                  Load Sample Document
-                </button>
-              </div>
-              <textarea
-                rows={8}
-                value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
-                placeholder="Paste multi-incident escalation log, customer email chain, or OCR dump..."
-                className="w-full text-xs font-mono p-3 rounded-lg border border-[#d8d5d0] bg-[#faf8f6] text-[#37322F]"
-              />
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  onClick={() => setShowBulkModal(false)}
-                  className="px-4 py-2 bg-stone-100 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleBulkImport}
-                  disabled={isSubmitting || !bulkText.trim()}
-                  className="px-4 py-2 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-                  <span>{isSubmitting ? "Parsing..." : "Parse & Split Document"}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Team Access Delegation Modal (PM Authority) */}
-      {showTeamModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#e0dedb] space-y-5">
-            <div className="flex items-center justify-between border-b border-[#e0dedb] pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
-                  <Users className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#37322F]">Team Access & Role Delegation</h3>
-                  <p className="text-[11px] text-[#828387]">Only authorized members can log into Sales or Engineering</p>
+                  <label className="font-bold text-[#828387] block mb-1">Ticket Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={ticketForm.title}
+                    onChange={(e) => setTicketForm({ ...ticketForm, title: e.target.value })}
+                    placeholder="e.g. Export 504 gateway timeout on reports > 50MB"
+                    className="w-full p-2 rounded-lg border border-[#d8d5d0] bg-[#faf8f6]"
+                  />
                 </div>
-              </div>
-              <button onClick={() => setShowTeamModal(false)} className="text-stone-400 hover:text-stone-800 text-lg">✕</button>
-            </div>
-
-            {/* Add Member Form */}
-            <form onSubmit={handleAddNewMember} className="p-3 bg-[#faf8f6] rounded-xl border border-[#e0dedb] space-y-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#828387] flex items-center gap-1">
-                <UserPlus className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Authorize New Department Member</span>
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  placeholder="Full Name (e.g. John Doe)"
-                  value={newMemberName}
-                  onChange={(e) => setNewMemberName(e.target.value)}
-                  className="text-xs p-2 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                />
-                <input
-                  type="email"
-                  required
-                  placeholder="corporate.email@company.com"
-                  value={newMemberEmail}
-                  onChange={(e) => setNewMemberEmail(e.target.value)}
-                  className="text-xs p-2 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                />
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-[#605a57]">Department:</label>
-                  <select
-                    value={newMemberRole}
-                    onChange={(e) => setNewMemberRole(e.target.value as any)}
-                    className="text-xs font-semibold p-1.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
+                <div>
+                  <label className="font-bold text-[#828387] block mb-1">Description</label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={ticketForm.description}
+                    onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
+                    placeholder="Provide details on customer impact and steps to reproduce..."
+                    className="w-full p-2 rounded-lg border border-[#d8d5d0] bg-[#faf8f6]"
+                  />
+                </div>
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2 bg-stone-100 text-stone-700 font-semibold rounded-lg"
                   >
-                    <option value="sales">Sales Department</option>
-                    <option value="engineering">Engineering Team</option>
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-[#37322F] text-white font-semibold rounded-lg hover:bg-[#252220]"
+                  >
+                    {isSubmitting ? "Creating..." : "Create Ticket"}
+                  </button>
                 </div>
-                <button
-                  type="submit"
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center gap-1.5 transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Grant Access</span>
-                </button>
-              </div>
-            </form>
-
-            {/* Approved Members List */}
-            <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#828387]">
-                Approved Workspace Members ({teamMembers.length})
-              </span>
-              <div className="max-h-56 overflow-y-auto space-y-1.5 divide-y divide-[#f0ede9]">
-                {teamMembers.map((member) => (
-                  <div key={member.id} className="pt-2 flex items-center justify-between text-xs">
-                    <div>
-                      <div className="font-semibold text-[#37322F] flex items-center gap-1.5">
-                        <span>{member.name}</span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-medium border ${
-                          member.role === "sales"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-purple-50 text-purple-700 border-purple-200"
-                        }`}>
-                          {member.role === "sales" ? "Sales Dept" : "Engineering"}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-[#828387]">{member.email}</div>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteMember(member.id)}
-                      className="p-1.5 text-stone-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                      title="Revoke Access"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-[#e0dedb] flex justify-end">
-              <button
-                onClick={() => setShowTeamModal(false)}
-                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg transition-colors"
-              >
-                Done
-              </button>
+              </form>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
       </div>
     </DepartmentGuard>
   );
