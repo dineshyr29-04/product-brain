@@ -376,7 +376,7 @@ Urgency: High priority.`
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="w-full px-6 lg:px-10 py-8 space-y-8">
         {/* KPI Strip */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Authority Score */}
