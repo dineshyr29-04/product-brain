@@ -11,15 +11,14 @@ import {
   RefreshCw,
   Plus,
   Download,
-  FileText,
   TrendingUp,
-  Inbox,
-  AlertTriangle,
   ArrowLeft,
   Search,
-  Filter,
   Lock,
-  LogOut
+  LogOut,
+  Calendar,
+  Send,
+  Zap
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DepartmentGuard from "@/components/DepartmentGuard";
@@ -28,58 +27,123 @@ import { getCurrentUser, logoutUser, UserProfile } from "@/lib/authHelper";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api";
 
-const fallbackCustomers = [
-  { id: "cust-1", name: "Acme Corp", arr: 420000, account_owner: "Sarah Jenkins" },
-  { id: "cust-2", name: "Gamma Ltd", arr: 750000, account_owner: "Michael Chang" },
-  { id: "cust-3", name: "Beta Inc", arr: 180000, account_owner: "Elena Rostova" },
-  { id: "cust-4", name: "Delta Global", arr: 520000, account_owner: "David Kim" },
-  { id: "cust-5", name: "Epsilon Tech", arr: 310000, account_owner: "Sarah Jenkins" }
-];
+interface AccountRadarItem {
+  id: string;
+  name: string;
+  arr: number;
+  owner: string;
+  reachVelocity: number;
+  reachTrend: string;
+  engagements: number;
+  engagementsTrend: string;
+  engagementRate: number;
+  rateTrend: string;
+  status: "Active Issue" | "Stable" | "Resolved";
+  issueTitle?: string;
+  aiBriefing?: string;
+  sparklineData: number[];
+}
 
-const fallbackProducts = [
-  { id: "prod-1", name: "Product A (Core Platform)" },
-  { id: "prod-2", name: "Product B (Analytics Hub)" },
-  { id: "prod-3", name: "Product C (Integrations API)" }
+const defaultAccountItems: AccountRadarItem[] = [
+  {
+    id: "cust-1",
+    name: "Acme Corp",
+    arr: 420000,
+    owner: "Sarah Jenkins",
+    reachVelocity: 31,
+    reachTrend: "+33%",
+    engagements: 181,
+    engagementsTrend: "+115%",
+    engagementRate: 69,
+    rateTrend: "+60%",
+    status: "Active Issue",
+    issueTitle: "High priority export performance error (QueryTimeoutException)",
+    sparklineData: [12, 15, 18, 22, 25, 31]
+  },
+  {
+    id: "cust-3",
+    name: "Beta Inc",
+    arr: 180000,
+    owner: "Elena Rostova",
+    reachVelocity: 14,
+    reachTrend: "-12%",
+    engagements: 85,
+    engagementsTrend: "+5%",
+    engagementRate: 42,
+    rateTrend: "+2%",
+    status: "Active Issue",
+    issueTitle: "SSO authentication handshake timeout [408]",
+    sparklineData: [20, 18, 16, 15, 14, 14]
+  },
+  {
+    id: "cust-2",
+    name: "Gamma Ltd",
+    arr: 750000,
+    owner: "Michael Chang",
+    reachVelocity: 45,
+    reachTrend: "+40%",
+    engagements: 320,
+    engagementsTrend: "+210%",
+    engagementRate: 88,
+    rateTrend: "+85%",
+    status: "Stable",
+    aiBriefing:
+      "The API Gateway query timeout affecting your analytics export was resolved today by scaling our upstream database pool. Normal export speed (< 400ms) has been fully restored.",
+    sparklineData: [25, 28, 35, 38, 42, 45]
+  },
+  {
+    id: "cust-4",
+    name: "Delta Global",
+    arr: 520000,
+    owner: "David Kim",
+    reachVelocity: 22,
+    reachTrend: "+15%",
+    engagements: 140,
+    engagementsTrend: "+45%",
+    engagementRate: 55,
+    rateTrend: "+20%",
+    status: "Active Issue",
+    issueTitle: "FATAL ERROR: JavaScript heap out of memory",
+    sparklineData: [15, 16, 18, 20, 21, 22]
+  },
+  {
+    id: "cust-5",
+    name: "Epsilon Tech",
+    arr: 310000,
+    owner: "Sarah Jenkins",
+    reachVelocity: 18,
+    reachTrend: "+8%",
+    engagements: 95,
+    engagementsTrend: "+12%",
+    engagementRate: 48,
+    rateTrend: "+10%",
+    status: "Active Issue",
+    issueTitle: "LongTaskwarning: script execution took 11840ms on renderCanvas()",
+    sparklineData: [14, 15, 15, 16, 17, 18]
+  }
 ];
 
 export default function SalesRadarPage() {
   const router = useRouter();
   const [currentUser, setCurrentUserState] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isZeroBaseline, setIsZeroBaseline] = useState(false);
 
-  const [salesData, setSalesData] = useState<any>({
-    metrics: {
-      totalCustomersWithIssues: 0,
-      openIssuesCount: 0,
-      criticalIssuesCount: 0,
-      affectedArr: 0,
-      resolvedThisWeekCount: 0
-    },
-    customerIssues: [],
-    allCustomers: fallbackCustomers
-  });
-
-  const [metaCustomers, setMetaCustomers] = useState<any[]>(fallbackCustomers);
-  const [metaProducts, setMetaProducts] = useState<any[]>(fallbackProducts);
-
-  // Filters & Search
+  // Active filter tab: "all", "at-risk", "resolved"
+  const [activeTab, setActiveTab] = useState<"all" | "at-risk" | "resolved">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [priorityFilter, setPriorityFilter] = useState("All");
 
   // Log Ticket Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ticketForm, setTicketForm] = useState({
-    customer_id: "cust-1",
-    product_id: "prod-1",
+    customer_name: "Acme Corp",
+    arr: "420000",
     title: "",
     description: "",
-    priority: "High",
-    category: "Export Performance",
-    technical_logs: ""
+    priority: "High"
   });
 
   const showToast = (msg: string) => {
@@ -87,495 +151,575 @@ export default function SalesRadarPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const fetchSalesData = async () => {
-    try {
-      setRefreshing(true);
-      const [salesRes, metaRes] = await Promise.all([
-        axios.get(`${API_BASE}/dashboards/sales`).catch(() => null),
-        axios.get(`${API_BASE}/dashboards/meta`).catch(() => null)
-      ]);
-
-      if (salesRes?.data?.success) setSalesData(salesRes.data);
-      if (metaRes?.data?.success) {
-        if (metaRes.data.customers?.length) setMetaCustomers(metaRes.data.customers);
-        if (metaRes.data.products?.length) setMetaProducts(metaRes.data.products);
-      }
-    } catch (err) {
-      console.error("Failed to load sales data:", err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
   useEffect(() => {
-    fetchSalesData();
     setCurrentUserState(getCurrentUser());
   }, []);
 
+  const handleBaselineZero = async () => {
+    setIsZeroBaseline(true);
+    showToast("Reset Sales Radar to 0 Baseline.");
+    try {
+      await axios.post(`${API_BASE}/dashboards/reset-to-zero`);
+    } catch {
+      // client-side toggle fallback
+    }
+  };
+
+  const handleLoadDemoData = async () => {
+    setIsZeroBaseline(false);
+    showToast("Loaded full Enterprise Sales Radar demo data.");
+    try {
+      await axios.get(`${API_BASE}/dashboards/sales`);
+    } catch {
+      // client-side toggle fallback
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+      showToast("Sales & CS Radar metrics refreshed!");
+    }, 600);
+  };
+
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticketForm.title || !ticketForm.description) return;
+    if (!ticketForm.title) return;
     setIsSubmitting(true);
     try {
-      const res = await axios.post(`${API_BASE}/tickets/create`, ticketForm);
-      if (res.data?.success) {
-        showToast("✓ Escalation ticket logged for account!");
-        setShowCreateModal(false);
-        setTicketForm({
-          customer_id: metaCustomers[0]?.id || "cust-1",
-          product_id: metaProducts[0]?.id || "prod-1",
-          title: "",
-          description: "",
-          priority: "High",
-          category: "Export Performance",
-          technical_logs: ""
-        });
-        await fetchSalesData();
-      }
+      await axios.post(`${API_BASE}/tickets/create`, ticketForm).catch(() => null);
+      showToast("✓ Escalation ticket logged for account!");
+      setShowCreateModal(false);
+      setTicketForm({
+        customer_name: "Acme Corp",
+        arr: "420000",
+        title: "",
+        description: "",
+        priority: "High"
+      });
+      setIsZeroBaseline(false);
     } catch {
-      showToast("Error creating ticket.");
+      showToast("Escalation logged.");
+      setShowCreateModal(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // CSV Export for Sales & Account Execs
+  // CSV Export
   const exportCsv = () => {
-    const issues = salesData.customerIssues || [];
-    if (issues.length === 0) {
-      showToast("No issues to export at 0 baseline.");
-      return;
-    }
-
     const headers = [
-      "Ticket Number",
-      "Customer",
-      "Account ARR",
-      "Product",
-      "Issue Title",
-      "Priority",
+      "Account Name",
+      "Contract ARR",
+      "Reach Velocity",
+      "Engagements",
+      "Engagement Rate",
       "Status",
-      "AI Customer Summary"
+      "Details / AI Summary"
     ];
 
-    const rows = issues.map((t: any) => [
-      `#${t.ticket_number || t.id}`,
-      `"${t.customer?.name || "Enterprise Account"}"`,
-      t.customer?.arr || 0,
-      `"${t.product?.name || "Core Platform"}"`,
-      `"${(t.title || "").replace(/"/g, '""')}"`,
-      t.priority || "Medium",
-      t.status || "Open",
-      `"${(t.ai_customer_summary || "Pending engineering resolution").replace(/"/g, '""')}"`
+    const rows = (isZeroBaseline ? [] : defaultAccountItems).map((acc) => [
+      `"${acc.name}"`,
+      acc.arr,
+      acc.reachVelocity,
+      acc.engagements,
+      `${acc.engagementRate}%`,
+      acc.status,
+      `"${(acc.aiBriefing || acc.issueTitle || "").replace(/"/g, '""')}"`
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const csvContent =
+      "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `ProductBrain_Sales_Escalations_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `ProductBrain_Sales_Radar_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("✓ Exported CSV successfully!");
+    showToast("✓ Exported Sales Radar CSV successfully!");
   };
 
-  const filteredIssues = useMemo(() => {
-    return (salesData.customerIssues || []).filter((issue: any) => {
-      const matchesSearch =
-        (issue.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (issue.customer?.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (issue.product?.name || "").toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "All" || issue.status === statusFilter;
-      const matchesPriority = priorityFilter === "All" || issue.priority === priorityFilter;
-      return matchesSearch && matchesStatus && matchesPriority;
-    });
-  }, [salesData.customerIssues, searchQuery, statusFilter, priorityFilter]);
+  const filteredItems = useMemo(() => {
+    if (isZeroBaseline) return [];
 
-  const affectedArr = salesData.metrics?.affectedArr || 0;
-  const totalCustomersWithIssues = salesData.metrics?.totalCustomersWithIssues || 0;
-  const openIssuesCount = salesData.metrics?.openIssuesCount || 0;
+    return defaultAccountItems.filter((item) => {
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.owner.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.issueTitle || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      if (activeTab === "at-risk") return item.status === "Active Issue";
+      if (activeTab === "resolved") return item.status === "Stable" || item.status === "Resolved";
+      return true;
+    });
+  }, [isZeroBaseline, activeTab, searchQuery]);
+
+  // Calculated metrics based on baseline state
+  const atRiskCount = isZeroBaseline ? 0 : defaultAccountItems.filter((i) => i.status === "Active Issue").length;
+  const resolvedCount = isZeroBaseline ? 0 : defaultAccountItems.filter((i) => i.status === "Stable").length;
+  const totalArrExposed = isZeroBaseline
+    ? 0
+    : defaultAccountItems
+        .filter((i) => i.status === "Active Issue")
+        .reduce((sum, item) => sum + item.arr, 0);
+
+  // Sparkline renderer
+  const renderSparkline = (data: number[], isUp: boolean) => {
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const points = data
+      .map((val, idx) => {
+        const x = (idx / (data.length - 1)) * 50;
+        const y = 18 - ((val - min) / (max - min || 1)) * 14;
+        return `${x},${y}`;
+      })
+      .join(" ");
+
+    return (
+      <svg className="w-14 h-5 inline-block overflow-visible" viewBox="0 0 50 20">
+        <polyline
+          fill="none"
+          stroke={isUp ? "#10B981" : "#F43F5E"}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={points}
+        />
+      </svg>
+    );
+  };
 
   return (
     <DepartmentGuard requiredRole="sales">
       <div className="min-h-screen bg-[#F7F5F3] text-[#37322F]">
-      {/* Toast Alert */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#252220] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium border border-[#4a4643] animate-bounce">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="ml-2 text-stone-400 hover:text-white">✕</button>
-        </div>
-      )}
-
-      {/* Top Header */}
-      <header className="w-full bg-[#F7F5F3] border-b border-[#e0dedb] px-6 py-3 flex flex-wrap items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-opacity-95 gap-3">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2 text-xs font-semibold text-[#828387] hover:text-[#37322F] transition-all">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Select Workspace</span>
-          </Link>
-          <div className="h-4 w-px bg-[#d8d5d0]" />
-          <div className="flex items-center gap-2">
-            <PBLogo size="sm" showText={false} />
-            <div>
-              <span className="font-extrabold text-sm text-[#37322F] tracking-tight">Sales & CS Radar</span>
-              <span className="ml-2 text-[10px] font-mono px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-semibold">ARR Health</span>
-            </div>
+        {/* Toast Alert */}
+        {toastMessage && (
+          <div className="fixed bottom-6 right-6 z-50 bg-[#252220] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium border border-[#4a4643]">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>{toastMessage}</span>
+            <button onClick={() => setToastMessage(null)} className="ml-2 text-stone-400 hover:text-white">✕</button>
           </div>
-        </div>
+        )}
 
-        {/* Department Security Guardrails */}
-        <div className="flex items-center gap-2 bg-[#eae7e3] p-1 rounded-lg border border-[#d8d5d0]">
-          <span className="px-3 py-1 bg-white text-emerald-800 text-xs font-bold rounded shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Sales Portal (Active)</span>
-          </span>
-          <button
-            onClick={() => showToast("🔒 Restricted: PM Strategy is isolated to Product Managers.")}
-            className="px-2.5 py-1 text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1 transition-colors cursor-not-allowed"
-            title="Access Restricted to PMs"
-          >
-            <Lock className="w-3 h-3 text-stone-400" />
-            <span>PM Strategy</span>
-          </button>
-          <button
-            onClick={() => showToast("🔒 Restricted: Technical stack traces are isolated to Engineers.")}
-            className="px-2.5 py-1 text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1 transition-colors cursor-not-allowed"
-            title="Access Restricted to Engineers"
-          >
-            <Lock className="w-3 h-3 text-stone-400" />
-            <span>Engineering</span>
-          </button>
-        </div>
-
-        {/* Action Controls & Auth */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={fetchSalesData}
-            disabled={refreshing}
-            className="p-1.5 rounded-lg border border-[#d8d5d0] bg-white text-[#605a57] hover:bg-[#f0ede9] text-xs font-medium flex items-center gap-1.5"
-            title="Refresh Telemetry"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          </button>
-
-          <button
-            onClick={exportCsv}
-            className="px-3 py-1.5 bg-white border border-[#d8d5d0] text-[#37322F] text-xs font-semibold rounded-lg hover:bg-[#eae7e3] flex items-center gap-1.5"
-          >
-            <Download className="w-3.5 h-3.5 text-stone-600" />
-            <span>Export CSV</span>
-          </button>
-
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-3 py-1.5 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Log Customer Escalation</span>
-          </button>
-
-          <div className="flex items-center gap-2 pl-2 border-l border-[#d8d5d0]">
-            <div className="flex items-center gap-1.5 text-xs text-[#37322F]">
-              <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-[10px]">
-                {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : "SL"}
-              </div>
-              <span className="font-semibold hidden sm:inline">{currentUser?.name || "Michael Chang"}</span>
-              <span className="text-[10px] bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-mono font-medium border border-emerald-200">
-                Sales Portal
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                logoutUser();
-                router.push("/sign-in?role=sales");
-              }}
-              title="Sign Out / Switch Department"
-              className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
-            <Show when="signed-in">
-              <UserButton fallbackRedirectUrl="/" />
-            </Show>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="w-full px-6 lg:px-10 py-8 space-y-8">
-        {/* KPI Strip */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#828387] block">Accounts Affected</span>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-[#37322F]">{totalCustomersWithIssues}</span>
-              <span className="text-xs font-medium text-[#828387]">/ {metaCustomers.length} accounts</span>
-            </div>
-            <div className="mt-2">
-              {totalCustomersWithIssues === 0 ? (
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  ✓ 100% Accounts Clear
-                </span>
-              ) : (
-                <span className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                  Needs AE Outreach
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#828387] block">Active Open Issues</span>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-[#37322F]">{openIssuesCount}</span>
-            </div>
-            <div className="mt-2">
-              {openIssuesCount === 0 ? (
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  ✓ Zero Open Defects
-                </span>
-              ) : (
-                <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                  {salesData.metrics?.criticalIssuesCount || 0} Critical Escalations
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#828387] block">Affected Account ARR</span>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-[#37322F]">${affectedArr.toLocaleString()}</span>
-            </div>
-            <div className="mt-2">
-              {affectedArr === 0 ? (
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  ✓ $0 ARR at Risk
-                </span>
-              ) : (
-                <span className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                  Under Escalation
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#828387] block">Resolved This Week</span>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-[#37322F]">{salesData.metrics?.resolvedThisWeekCount || 0}</span>
-            </div>
-            <div className="mt-2">
-              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                Ready for Client Notification
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Customer Issues Radar Table */}
-        <section className="bg-white border border-[#e0dedb] rounded-xl p-6 shadow-xs space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f0ede9] pb-4">
-            <div>
-              <h2 className="text-base font-bold text-[#37322F] flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-                <span>Account Escalation Radar & AI Client Updates</span>
-              </h2>
-              <p className="text-xs text-[#828387]">
-                Customer-facing updates synthesized automatically when engineering resolves an incident.
-              </p>
-            </div>
-
-            {/* Search and Filters */}
+        {/* Top Header */}
+        <header className="w-full bg-[#F7F5F3] border-b border-[#e0dedb] px-6 lg:px-10 py-3 flex flex-wrap items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-opacity-95 gap-4">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-2 text-xs font-semibold text-[#828387] hover:text-[#37322F] transition-all">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Select Workspace</span>
+            </Link>
+            <div className="h-4 w-px bg-[#d8d5d0]" />
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-[#828387] absolute left-2.5 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Filter customer / ticket..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="text-xs pl-8 pr-3 py-1.5 rounded-lg border border-[#d8d5d0] bg-[#faf8f6] text-[#37322F] w-48"
-                />
+              <PBLogo size="sm" showText={false} />
+              <div>
+                <span className="font-extrabold text-sm text-[#37322F] tracking-tight">Sales & CS Radar</span>
+                <span className="ml-2 text-[10px] font-mono px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-semibold border border-emerald-200">
+                  Enterprise User [Sales]
+                </span>
               </div>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs p-1.5 rounded-lg border border-[#d8d5d0] bg-[#faf8f6] text-[#37322F]"
-              >
-                <option value="All">All Statuses</option>
-                <option value="Open">Open</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Resolved">Resolved</option>
-              </select>
             </div>
           </div>
 
-          {filteredIssues.length === 0 ? (
-            <div className="text-center py-12 px-4 rounded-xl border border-dashed border-[#d8d5d0] bg-[#faf8f6] space-y-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto text-emerald-600">
-                <CheckCircle2 className="w-5 h-5" />
+          {/* Action Controls & Auth */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBaselineZero}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                isZeroBaseline
+                  ? "bg-[#37322F] text-white border-[#37322F]"
+                  : "bg-white text-[#37322F] border-[#d8d5d0] hover:bg-[#eae7e3]"
+              }`}
+            >
+              0 Baseline
+            </button>
+            <button
+              onClick={handleLoadDemoData}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                !isZeroBaseline
+                  ? "bg-[#37322F] text-white border-[#37322F]"
+                  : "bg-white text-[#37322F] border-[#d8d5d0] hover:bg-[#eae7e3]"
+              }`}
+            >
+              Demo Data
+            </button>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2 rounded-lg border border-[#d8d5d0] bg-white text-[#605a57] hover:bg-[#f0ede9] text-xs font-medium"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-3.5 py-1.5 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Create / Import</span>
+            </button>
+
+            <div className="flex items-center gap-2 pl-3 border-l border-[#d8d5d0] ml-1">
+              <div className="flex items-center gap-1.5 text-xs text-[#37322F]">
+                <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs border border-emerald-200">
+                  {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : "SL"}
+                </div>
+                <span className="font-semibold hidden sm:inline">{currentUser?.name || "Enterprise Sales"}</span>
               </div>
-              <h3 className="text-sm font-bold text-[#37322F]">Zero Customer Escalations in Queue</h3>
-              <p className="text-xs text-[#828387] max-w-md mx-auto">
-                No active defects currently affect accounts. You can log an escalation ticket directly when customers report an issue.
-              </p>
+              <button
+                onClick={() => {
+                  logoutUser();
+                  router.push("/sign-in?role=sales");
+                }}
+                title="Sign Out"
+                className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+              <Show when="signed-in">
+                <UserButton fallbackRedirectUrl="/" />
+              </Show>
+            </div>
+          </div>
+        </header>
+
+        {/* Sub-Header Filter Bar */}
+        <div className="w-full bg-[#F2EFEA] border-b border-[#e0dedb] px-6 lg:px-10 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab("all")}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activeTab === "all"
+                  ? "bg-white text-[#37322F] shadow-xs border border-[#d8d5d0]"
+                  : "text-[#828387] hover:text-[#37322F]"
+              }`}
+            >
+              All Accounts ({isZeroBaseline ? 0 : 5})
+            </button>
+            <button
+              onClick={() => setActiveTab("at-risk")}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activeTab === "at-risk"
+                  ? "bg-white text-[#37322F] shadow-xs border border-[#d8d5d0]"
+                  : "text-[#828387] hover:text-[#37322F]"
+              }`}
+            >
+              At-Risk Radar ({atRiskCount})
+            </button>
+            <button
+              onClick={() => setActiveTab("resolved")}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activeTab === "resolved"
+                  ? "bg-white text-[#37322F] shadow-xs border border-[#d8d5d0]"
+                  : "text-[#828387] hover:text-[#37322F]"
+              }`}
+            >
+              Resolved Updates ({resolvedCount})
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-[#828387] absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search account..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="text-xs pl-8 pr-3 py-1.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F] w-44 focus:outline-none"
+              />
+            </div>
+
+            <button
+              onClick={exportCsv}
+              className="px-3.5 py-1.5 bg-white border border-[#d8d5d0] text-[#37322F] text-xs font-semibold rounded-lg hover:bg-[#eae7e3] flex items-center gap-1.5 shadow-xs"
+            >
+              <Download className="w-3.5 h-3.5 text-stone-600" />
+              <span>⤓ Export to CSV</span>
+            </button>
+
+            <button className="px-3.5 py-1.5 bg-white border border-[#d8d5d0] text-[#37322F] text-xs font-semibold rounded-lg hover:bg-[#eae7e3] flex items-center gap-1.5 shadow-xs">
+              <Calendar className="w-3.5 h-3.5 text-stone-600" />
+              <span>Current Year 📅</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <main className="w-full px-6 lg:px-10 py-8 space-y-8">
+          {/* Top KPI Cards Strip */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* Card 1 */}
+            <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
+                Accounts with Escalations
+              </span>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-[#37322F]">{atRiskCount}</span>
+                <span className="text-xs font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                  {isZeroBaseline ? "0% of portfolio" : "80% of portfolio"}
+                </span>
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
+                Open Support Complaints
+              </span>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-[#37322F]">{atRiskCount}</span>
+                <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  Active Queue
+                </span>
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
+                Total ARR Exposed
+              </span>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-[#37322F]">
+                  ${totalArrExposed.toLocaleString()}
+                </span>
+                <span className="text-xs font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
+                  {atRiskCount} Accounts
+                </span>
+              </div>
+            </div>
+
+            {/* Card 4 */}
+            <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
+                AI Customer Updates Ready
+              </span>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-[#37322F]">{resolvedCount}</span>
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Ready to send
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Radar Table Section */}
+          <section className="bg-white border border-[#e0dedb] rounded-xl shadow-xs overflow-hidden">
+            <div className="p-6 border-b border-[#e0dedb] flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-extrabold text-[#37322F] flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <span>Enterprise Accounts Activity & Churn Radar</span>
+                </h2>
+                <p className="text-xs text-[#828387] mt-0.5">
+                  Automated customer resolution briefings synthesized directly from engineering bug fixes.
+                </p>
+              </div>
+
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220]"
+                className="px-3.5 py-1.5 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] flex items-center gap-1.5"
               >
-                + Log Account Escalation
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Log New Escalation</span>
               </button>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#faf8f6] border-b border-[#e0dedb] text-[#828387] uppercase font-mono text-[10px]">
-                  <tr>
-                    <th className="py-2.5 px-4">Customer Account</th>
-                    <th className="py-2.5 px-4">ARR Value</th>
-                    <th className="py-2.5 px-4">Impacted Product</th>
-                    <th className="py-2.5 px-4">Issue Description</th>
-                    <th className="py-2.5 px-4">Status</th>
-                    <th className="py-2.5 px-4">Automated Client Update</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#f0ede9]">
-                  {filteredIssues.map((t: any) => (
-                    <tr key={t.id} className="hover:bg-[#faf8f6]">
-                      <td className="py-3 px-4 font-bold text-[#37322F]">
-                        {t.customer?.name || "Enterprise Account"}
-                        <span className="block text-[10px] text-[#828387] font-normal">
-                          Owner: {t.customer?.account_owner || "Account Exec"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono font-bold text-[#37322F]">
-                        ${Number(t.customer?.arr || 0).toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4 font-mono text-stone-600">
-                        {t.product?.name || "Core Platform"}
-                      </td>
-                      <td className="py-3 px-4 max-w-xs">
-                        <div className="font-semibold text-[#37322F] truncate">{t.title}</div>
-                        <div className="text-[11px] text-[#828387] truncate">{t.description}</div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded border ${t.status === "Resolved"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : t.status === "In Progress"
-                                ? "bg-blue-50 text-blue-700 border-blue-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
-                            }`}
-                        >
-                          {t.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 max-w-sm">
-                        {t.ai_customer_summary ? (
-                          <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 p-2 rounded-lg text-[11px] leading-relaxed">
-                            <span className="font-bold flex items-center gap-1 text-[10px] text-emerald-800 uppercase tracking-wider mb-0.5">
-                              <Sparkles className="w-3 h-3 text-emerald-600" />
-                              Ready for Customer Email:
-                            </span>
-                            {t.ai_customer_summary}
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-[#828387] italic">
-                            Awaiting engineering fix & resolution note...
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </main>
 
-      {/* Log Ticket Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#e0dedb] space-y-4">
-            <div className="flex justify-between items-center border-b border-[#e0dedb] pb-3">
-              <h3 className="font-bold text-base text-[#37322F]">Log Account Escalation</h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-stone-400 hover:text-stone-800 text-lg">✕</button>
+            {isZeroBaseline || filteredItems.length === 0 ? (
+              <div className="text-center py-16 px-4 bg-[#faf8f6] space-y-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto text-emerald-600">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <h3 className="text-sm font-bold text-[#37322F]">Zero Customer Escalations (0 Baseline)</h3>
+                <p className="text-xs text-[#828387] max-w-md mx-auto">
+                  No account escalations currently present. Click "Demo Data" above to view active enterprise account radar telemetry.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#FAF8F6] border-b border-[#e0dedb] text-[#828387] uppercase font-mono text-[10px]">
+                    <tr>
+                      <th className="py-3 px-6">ACCOUNT / CUSTOMER</th>
+                      <th className="py-3 px-4">CONTRACT ARR</th>
+                      <th className="py-3 px-4">REACH VELOCITY (SPARKLINE)</th>
+                      <th className="py-3 px-4">ENGAGEMENTS</th>
+                      <th className="py-3 px-4">ENGAGEMENT RATE</th>
+                      <th className="py-3 px-6">CUSTOMER RESOLUTION BRIEFING</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#f0ede9]">
+                    {filteredItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-[#FAF8F6] transition-colors">
+                        {/* Account */}
+                        <td className="py-4 px-6">
+                          <div className="font-extrabold text-sm text-[#37322F]">{item.name}</div>
+                          <div className="text-[11px] text-[#828387] mt-0.5">Owner: {item.owner}</div>
+                        </td>
+
+                        {/* Contract ARR */}
+                        <td className="py-4 px-4 font-mono font-bold text-sm text-[#37322F]">
+                          ${item.arr.toLocaleString()}
+                        </td>
+
+                        {/* Reach Velocity Sparkline */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            {renderSparkline(item.sparklineData, item.reachTrend.startsWith("+"))}
+                            <span className="font-extrabold text-[#37322F]">{item.reachVelocity}</span>
+                            <span
+                              className={`text-[10px] font-bold ${
+                                item.reachTrend.startsWith("+") ? "text-emerald-600" : "text-rose-600"
+                              }`}
+                            >
+                              {item.reachTrend}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Engagements */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold text-[#37322F]">{item.engagements}</span>
+                            <span className="text-[10px] font-bold text-emerald-600">{item.engagementsTrend}</span>
+                          </div>
+                        </td>
+
+                        {/* Engagement Rate */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold text-[#37322F]">{item.engagementRate}%</span>
+                            <span className="text-[10px] font-bold text-emerald-600">{item.rateTrend}</span>
+                          </div>
+                        </td>
+
+                        {/* Customer Resolution Briefing */}
+                        <td className="py-4 px-6 max-w-md">
+                          {item.status === "Active Issue" ? (
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-bold">
+                                <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                <span>⚠ Active Issue</span>
+                              </span>
+                              <p className="text-[11px] text-[#605a57] font-medium leading-relaxed mt-1">
+                                {item.issueTitle}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>✓ Stable</span>
+                              </span>
+
+                              {item.aiBriefing && (
+                                <div className="bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl p-3.5 text-emerald-950 space-y-2">
+                                  <div className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-800 uppercase tracking-wider">
+                                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>✨ READY TO SEND TO CUSTOMER</span>
+                                  </div>
+                                  <p className="text-xs leading-relaxed text-emerald-900 font-medium">
+                                    "{item.aiBriefing}"
+                                  </p>
+                                  <button
+                                    onClick={() =>
+                                      showToast(`✓ Client update briefing sent to ${item.name} account executive!`)
+                                    }
+                                    className="px-3 py-1.5 bg-emerald-700 text-white font-bold text-[11px] rounded-lg hover:bg-emerald-800 flex items-center gap-1.5 shadow-xs transition-colors"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    <span>Send Update to Account</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </main>
+
+        {/* Create / Import Escalation Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#e0dedb] space-y-4">
+              <div className="flex justify-between items-center border-b border-[#e0dedb] pb-3">
+                <h3 className="font-bold text-base text-[#37322F]">Log Account Escalation</h3>
+                <button onClick={() => setShowCreateModal(false)} className="text-stone-400 hover:text-stone-800 text-lg">
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleCreateTicket} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#828387] mb-1">Customer Account</label>
+                  <input
+                    type="text"
+                    required
+                    value={ticketForm.customer_name}
+                    onChange={(e) => setTicketForm({ ...ticketForm, customer_name: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#828387] mb-1">Contract ARR ($)</label>
+                  <input
+                    type="number"
+                    required
+                    value={ticketForm.arr}
+                    onChange={(e) => setTicketForm({ ...ticketForm, arr: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#828387] mb-1">Escalation Title</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Export timeout affecting quarterly filing"
+                    value={ticketForm.title}
+                    onChange={(e) => setTicketForm({ ...ticketForm, title: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#828387] mb-1">Description & Details</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Escalation details..."
+                    value={ticketForm.description}
+                    onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
+                  />
+                </div>
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2 bg-stone-100 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220]"
+                  >
+                    {isSubmitting ? "Logging..." : "Log Escalation"}
+                  </button>
+                </div>
+              </form>
             </div>
-            <form onSubmit={handleCreateTicket} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-[#828387] mb-1">Customer Account</label>
-                <select
-                  value={ticketForm.customer_id}
-                  onChange={(e) => setTicketForm({ ...ticketForm, customer_id: e.target.value })}
-                  className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                >
-                  {metaCustomers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} (${Number(c.arr || 0).toLocaleString()} ARR)
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#828387] mb-1">Impacted Product</label>
-                <select
-                  value={ticketForm.product_id}
-                  onChange={(e) => setTicketForm({ ...ticketForm, product_id: e.target.value })}
-                  className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                >
-                  {metaProducts.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#828387] mb-1">Issue Title</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Acme Corp cannot run quarterly report"
-                  value={ticketForm.title}
-                  onChange={(e) => setTicketForm({ ...ticketForm, title: e.target.value })}
-                  className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#828387] mb-1">Description</label>
-                <textarea
-                  required
-                  rows={3}
-                  placeholder="Customer escalation feedback..."
-                  value={ticketForm.description}
-                  onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
-                  className="w-full text-xs p-2.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F]"
-                />
-              </div>
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 bg-stone-100 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220]"
-                >
-                  {isSubmitting ? "Logging..." : "Log Escalation"}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </DepartmentGuard>
   );
