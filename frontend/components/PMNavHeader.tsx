@@ -8,10 +8,6 @@ import {
   RefreshCw,
   Plus,
   LogOut,
-  LayoutDashboard,
-  Activity,
-  FileText,
-  Users,
   ShieldCheck
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -152,54 +148,50 @@ export default function PMNavHeader({
         </div>
       </div>
 
-      {/* Sub-Header Navigation Tabs */}
-      <div className="px-6 lg:px-10 py-2.5 bg-[#F2EFEA] flex flex-wrap items-center gap-2">
+      {/* Sub-Header Navigation Tabs (No Icons, Prominently Highlighted Active Tab) */}
+      <div className="px-6 lg:px-10 py-2 bg-[#F2EFEA] flex flex-wrap items-center gap-2">
         <Link
           href="/dashboard/pm"
-          className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 text-xs transition-all ${
             activeTab === "overview"
-              ? "bg-white text-[#37322F] shadow-xs border border-[#d8d5d0]"
-              : "text-[#828387] hover:text-[#37322F]"
+              ? "bg-[#37322F] text-white font-extrabold shadow-sm rounded-lg border border-[#37322F]"
+              : "bg-white/90 text-[#605a57] font-bold rounded-lg border border-[#d8d5d0] hover:bg-white hover:text-[#37322F]"
           }`}
         >
-          <LayoutDashboard className="w-3.5 h-3.5 text-amber-700" />
-          <span>Executive Overview</span>
+          Executive Overview
         </Link>
 
         <Link
           href="/dashboard/pm/telemetry"
-          className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 text-xs transition-all ${
             activeTab === "telemetry"
-              ? "bg-white text-[#37322F] shadow-xs border border-[#d8d5d0]"
-              : "text-[#828387] hover:text-[#37322F]"
+              ? "bg-[#37322F] text-white font-extrabold shadow-sm rounded-lg border border-[#37322F]"
+              : "bg-white/90 text-[#605a57] font-bold rounded-lg border border-[#d8d5d0] hover:bg-white hover:text-[#37322F]"
           }`}
         >
-          <Activity className="w-3.5 h-3.5 text-blue-600" />
-          <span>Cross-Team Telemetry</span>
+          Cross-Team Telemetry
         </Link>
 
         <Link
           href="/dashboard/pm/prds"
-          className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 text-xs transition-all ${
             activeTab === "prds"
-              ? "bg-white text-[#37322F] shadow-xs border border-[#d8d5d0]"
-              : "text-[#828387] hover:text-[#37322F]"
+              ? "bg-[#37322F] text-white font-extrabold shadow-sm rounded-lg border border-[#37322F]"
+              : "bg-white/90 text-[#605a57] font-bold rounded-lg border border-[#d8d5d0] hover:bg-white hover:text-[#37322F]"
           }`}
         >
-          <FileText className="w-3.5 h-3.5 text-emerald-600" />
-          <span>PRDs & Closed Tickets</span>
+          PRDs & Closed Tickets
         </Link>
 
         <Link
           href="/dashboard/pm/members"
-          className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 text-xs transition-all ${
             activeTab === "members"
-              ? "bg-white text-[#37322F] shadow-xs border border-[#d8d5d0]"
-              : "text-[#828387] hover:text-[#37322F]"
+              ? "bg-[#37322F] text-white font-extrabold shadow-sm rounded-lg border border-[#37322F]"
+              : "bg-white/90 text-[#605a57] font-bold rounded-lg border border-[#d8d5d0] hover:bg-white hover:text-[#37322F]"
           }`}
         >
-          <Users className="w-3.5 h-3.5 text-purple-600" />
-          <span>Workspace Member Access</span>
+          Workspace Member Access
         </Link>
       </div>
     </header>
