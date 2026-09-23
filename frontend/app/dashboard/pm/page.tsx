@@ -36,7 +36,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api";
 
 const fallbackCustomers = [
   { id: "cust-1", name: "Acme Corp", arr: 420000, account_owner: "Sarah Jenkins" },
