@@ -18,7 +18,8 @@ import {
   LogOut,
   Calendar,
   Send,
-  Zap
+  Mail,
+  Check
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DepartmentGuard from "@/components/DepartmentGuard";
@@ -32,6 +33,7 @@ interface AccountRadarItem {
   name: string;
   arr: number;
   owner: string;
+  churnRisk: number;
   reachVelocity: number;
   reachTrend: string;
   engagements: number;
@@ -50,6 +52,7 @@ const defaultAccountItems: AccountRadarItem[] = [
     name: "Acme Corp",
     arr: 420000,
     owner: "Sarah Jenkins",
+    churnRisk: 78,
     reachVelocity: 31,
     reachTrend: "+33%",
     engagements: 181,
@@ -65,6 +68,7 @@ const defaultAccountItems: AccountRadarItem[] = [
     name: "Beta Inc",
     arr: 180000,
     owner: "Elena Rostova",
+    churnRisk: 45,
     reachVelocity: 14,
     reachTrend: "-12%",
     engagements: 85,
@@ -80,6 +84,7 @@ const defaultAccountItems: AccountRadarItem[] = [
     name: "Gamma Ltd",
     arr: 750000,
     owner: "Michael Chang",
+    churnRisk: 5,
     reachVelocity: 45,
     reachTrend: "+40%",
     engagements: 320,
@@ -96,6 +101,7 @@ const defaultAccountItems: AccountRadarItem[] = [
     name: "Delta Global",
     arr: 520000,
     owner: "David Kim",
+    churnRisk: 68,
     reachVelocity: 22,
     reachTrend: "+15%",
     engagements: 140,
@@ -111,6 +117,7 @@ const defaultAccountItems: AccountRadarItem[] = [
     name: "Epsilon Tech",
     arr: 310000,
     owner: "Sarah Jenkins",
+    churnRisk: 35,
     reachVelocity: 18,
     reachTrend: "+8%",
     engagements: 95,
@@ -126,7 +133,6 @@ const defaultAccountItems: AccountRadarItem[] = [
 export default function SalesRadarPage() {
   const router = useRouter();
   const [currentUser, setCurrentUserState] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isZeroBaseline, setIsZeroBaseline] = useState(false);
@@ -134,6 +140,10 @@ export default function SalesRadarPage() {
   // Active filter tab: "all", "at-risk", "resolved"
   const [activeTab, setActiveTab] = useState<"all" | "at-risk" | "resolved">("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Email Dispatcher Modal State
+  const [dispatchingAccount, setDispatchingAccount] = useState<AccountRadarItem | null>(null);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // Log Ticket Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -160,9 +170,7 @@ export default function SalesRadarPage() {
     showToast("Reset Sales Radar to 0 Baseline.");
     try {
       await axios.post(`${API_BASE}/dashboards/reset-to-zero`);
-    } catch {
-      // client-side toggle fallback
-    }
+    } catch {}
   };
 
   const handleLoadDemoData = async () => {
@@ -170,9 +178,7 @@ export default function SalesRadarPage() {
     showToast("Loaded full Enterprise Sales Radar demo data.");
     try {
       await axios.get(`${API_BASE}/dashboards/sales`);
-    } catch {
-      // client-side toggle fallback
-    }
+    } catch {}
   };
 
   const handleRefresh = async () => {
@@ -181,6 +187,16 @@ export default function SalesRadarPage() {
       setRefreshing(false);
       showToast("Sales & CS Radar metrics refreshed!");
     }, 600);
+  };
+
+  const handleSendClientEmail = () => {
+    if (!dispatchingAccount) return;
+    setIsSendingEmail(true);
+    setTimeout(() => {
+      setIsSendingEmail(false);
+      showToast(`✓ Automated client briefing email dispatched to ${dispatchingAccount.name} team!`);
+      setDispatchingAccount(null);
+    }, 500);
   };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -212,6 +228,7 @@ export default function SalesRadarPage() {
     const headers = [
       "Account Name",
       "Contract ARR",
+      "Churn Risk Score",
       "Reach Velocity",
       "Engagements",
       "Engagement Rate",
@@ -222,6 +239,7 @@ export default function SalesRadarPage() {
     const rows = (isZeroBaseline ? [] : defaultAccountItems).map((acc) => [
       `"${acc.name}"`,
       acc.arr,
+      `${acc.churnRisk}%`,
       acc.reachVelocity,
       acc.engagements,
       `${acc.engagementRate}%`,
@@ -258,7 +276,7 @@ export default function SalesRadarPage() {
     });
   }, [isZeroBaseline, activeTab, searchQuery]);
 
-  // Calculated metrics based on baseline state
+  // Calculated metrics
   const atRiskCount = isZeroBaseline ? 0 : defaultAccountItems.filter((i) => i.status === "Active Issue").length;
   const resolvedCount = isZeroBaseline ? 0 : defaultAccountItems.filter((i) => i.status === "Stable").length;
   const totalArrExposed = isZeroBaseline
@@ -452,7 +470,6 @@ export default function SalesRadarPage() {
         <main className="w-full px-6 lg:px-10 py-8 space-y-8">
           {/* Top KPI Cards Strip */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* Card 1 */}
             <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
                 Accounts with Escalations
@@ -465,7 +482,6 @@ export default function SalesRadarPage() {
               </div>
             </div>
 
-            {/* Card 2 */}
             <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
                 Open Support Complaints
@@ -478,7 +494,6 @@ export default function SalesRadarPage() {
               </div>
             </div>
 
-            {/* Card 3 */}
             <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
                 Total ARR Exposed
@@ -493,7 +508,6 @@ export default function SalesRadarPage() {
               </div>
             </div>
 
-            {/* Card 4 */}
             <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
                 AI Customer Updates Ready
@@ -545,7 +559,7 @@ export default function SalesRadarPage() {
                   <thead className="bg-[#FAF8F6] border-b border-[#e0dedb] text-[#828387] uppercase font-mono text-[10px]">
                     <tr>
                       <th className="py-3 px-6">ACCOUNT / CUSTOMER</th>
-                      <th className="py-3 px-4">CONTRACT ARR</th>
+                      <th className="py-3 px-4">CONTRACT ARR & CHURN RISK</th>
                       <th className="py-3 px-4">REACH VELOCITY (SPARKLINE)</th>
                       <th className="py-3 px-4">ENGAGEMENTS</th>
                       <th className="py-3 px-4">ENGAGEMENT RATE</th>
@@ -555,15 +569,27 @@ export default function SalesRadarPage() {
                   <tbody className="divide-y divide-[#f0ede9]">
                     {filteredItems.map((item) => (
                       <tr key={item.id} className="hover:bg-[#FAF8F6] transition-colors">
-                        {/* Account */}
                         <td className="py-4 px-6">
                           <div className="font-extrabold text-sm text-[#37322F]">{item.name}</div>
                           <div className="text-[11px] text-[#828387] mt-0.5">Owner: {item.owner}</div>
                         </td>
 
-                        {/* Contract ARR */}
-                        <td className="py-4 px-4 font-mono font-bold text-sm text-[#37322F]">
-                          ${item.arr.toLocaleString()}
+                        {/* Contract ARR & Churn Risk Badge */}
+                        <td className="py-4 px-4 space-y-1">
+                          <div className="font-mono font-extrabold text-sm text-[#37322F]">
+                            ${item.arr.toLocaleString()}
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 text-[10px] font-extrabold rounded border inline-block ${
+                              item.churnRisk > 60
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : item.churnRisk > 20
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            }`}
+                          >
+                            {item.churnRisk > 20 ? `⚠ ${item.churnRisk}% Churn Risk` : "✓ Low Churn Risk"}
+                          </span>
                         </td>
 
                         {/* Reach Velocity Sparkline */}
@@ -581,7 +607,6 @@ export default function SalesRadarPage() {
                           </div>
                         </td>
 
-                        {/* Engagements */}
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-1.5">
                             <span className="font-extrabold text-[#37322F]">{item.engagements}</span>
@@ -589,7 +614,6 @@ export default function SalesRadarPage() {
                           </div>
                         </td>
 
-                        {/* Engagement Rate */}
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-1.5">
                             <span className="font-extrabold text-[#37322F]">{item.engagementRate}%</span>
@@ -597,7 +621,6 @@ export default function SalesRadarPage() {
                           </div>
                         </td>
 
-                        {/* Customer Resolution Briefing */}
                         <td className="py-4 px-6 max-w-md">
                           {item.status === "Active Issue" ? (
                             <div className="space-y-1">
@@ -626,9 +649,7 @@ export default function SalesRadarPage() {
                                     "{item.aiBriefing}"
                                   </p>
                                   <button
-                                    onClick={() =>
-                                      showToast(`✓ Client update briefing sent to ${item.name} account executive!`)
-                                    }
+                                    onClick={() => setDispatchingAccount(item)}
                                     className="px-3 py-1.5 bg-emerald-700 text-white font-bold text-[11px] rounded-lg hover:bg-emerald-800 flex items-center gap-1.5 shadow-xs transition-colors"
                                   >
                                     <Send className="w-3 h-3" />
@@ -647,6 +668,70 @@ export default function SalesRadarPage() {
             )}
           </section>
         </main>
+
+        {/* Client Email Dispatcher Modal */}
+        {dispatchingAccount && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#e0dedb] space-y-4">
+              <div className="flex justify-between items-center border-b border-[#e0dedb] pb-3">
+                <h3 className="font-bold text-base text-[#37322F]">Dispatch Client Update Briefing</h3>
+                <button onClick={() => setDispatchingAccount(null)} className="text-stone-400 hover:text-stone-800 text-lg">
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="font-bold text-[#828387] block mb-1">Recipient Account Exec & Executive</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${dispatchingAccount.owner} <${dispatchingAccount.name.toLowerCase().replace(/\s+/g, "")}@customer.com>`}
+                    className="w-full p-2.5 rounded-lg border border-[#d8d5d0] bg-[#FAF8F6] text-[#37322F] font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-[#828387] block mb-1">Subject</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`[ProductBrain Update] Technical Incident Resolved for ${dispatchingAccount.name}`}
+                    className="w-full p-2.5 rounded-lg border border-[#d8d5d0] bg-[#FAF8F6] text-[#37322F] font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-[#828387] block mb-1">Plain-English Briefing Preview</label>
+                  <textarea
+                    rows={4}
+                    readOnly
+                    value={dispatchingAccount.aiBriefing}
+                    className="w-full p-3 rounded-lg border border-[#d8d5d0] bg-emerald-50/60 text-emerald-950 font-medium leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDispatchingAccount(null)}
+                  className="px-4 py-2 bg-stone-100 text-stone-700 font-semibold rounded-lg hover:bg-stone-200 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendClientEmail}
+                  disabled={isSendingEmail}
+                  className="px-4 py-2 bg-emerald-700 text-white font-extrabold text-xs rounded-lg hover:bg-emerald-800 flex items-center gap-1.5"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>{isSendingEmail ? "Dispatching..." : "Dispatch Email Briefing"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Create / Import Escalation Modal */}
         {showCreateModal && (
