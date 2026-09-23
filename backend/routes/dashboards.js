@@ -32,7 +32,8 @@ router.get('/sales', async (req, res) => {
         affectedArr,
         resolvedThisWeekCount: resolvedThisWeek.length
       },
-      customerIssues: tickets
+      customerIssues: tickets,
+      allCustomers: customers
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -56,7 +57,7 @@ router.get('/engineering', async (req, res) => {
         inProgress: inProgressCount,
         blocked: blockedCount,
         resolvedToday: resolvedTodayCount,
-        avgResolutionTimeHours: 18.4
+        avgResolutionTimeHours: tickets.length === 0 ? 0 : 18.4
       },
       tickets
     });
@@ -93,26 +94,20 @@ router.get('/pm', async (req, res) => {
         return sum + (cust ? Number(cust.arr) : 0);
       }, 0);
 
-      return {
-        product_id: prod.id,
-        product_name: prod.name,
-        open_tickets: prodTickets.length,
-        customers_affected: prodCustIds.size,
-        affected_arr: prodArr
-      };
+      return { \n        product_id: prod.id, \n        product_name: prod.name, \n        open_tickets: prodTickets.length, \n        customers_affected: prodCustIds.size, \n        affected_arr: prodArr\n }; \n
     });
 
     res.json({
       success: true,
       productHealth: {
-        totalCustomers: customers.length * 250, // Scaled for enterprise realism
+        totalCustomers: customers.length,
         customersWithOpenIssues: affectedCustomerIds.size,
         openTechnicalTickets: openTickets.length,
         resolvedThisMonth,
         affectedArr,
         criticalIssues,
         highPriorityIssues: highIssues,
-        avgResolutionTimeHours: 18.4
+        avgResolutionTimeHours: tickets.length === 0 ? 0 : 18.4
       },
       productBreakdown,
       opportunities,
@@ -134,6 +129,26 @@ router.get('/meta', async (req, res) => {
     const customers = await db.getCustomers();
     const products = await db.getProducts();
     res.json({ success: true, customers, products });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/dashboards/reset-to-zero - Clear all tickets and opportunities to 0
+router.post('/reset-to-zero', async (req, res) => {
+  try {
+    const result = await db.resetToZero();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/dashboards/seed-demo - Re-populate demo dataset
+router.post('/seed-demo', async (req, res) => {
+  try {
+    const result = await db.seedDemo();
+    res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
