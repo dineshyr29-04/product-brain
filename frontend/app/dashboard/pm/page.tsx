@@ -37,7 +37,8 @@ import {
   Trash2,
   X,
   LogOut,
-  Shield
+  Shield,
+  Eye
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DepartmentGuard from "@/components/DepartmentGuard";
@@ -649,7 +650,13 @@ Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
                   </div>
 
                   <button
-                    onClick={() => handleGeneratePrd(opp.id)}
+                    onClick={() => {
+                      if (opp.prd_content) {
+                        setSelectedOpportunity(opp);
+                      } else {
+                        handleGeneratePrd(opp.id);
+                      }
+                    }}
                     disabled={generatingPrdId === opp.id}
                     className="px-4 py-2 bg-[#252220] hover:bg-black text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-70 disabled:cursor-not-allowed"
                   >
@@ -658,10 +665,15 @@ Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
                         <RefreshCw className="w-3.5 h-3.5 text-amber-300 animate-spin" />
                         <span>Synthesizing PRD...</span>
                       </>
+                    ) : opp.prd_content ? (
+                      <>
+                        <Eye className="w-3.5 h-3.5 text-emerald-300" />
+                        <span>View PRD Spec</span>
+                      </>
                     ) : (
                       <>
                         <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                        <span>{opp.prd_content ? "View / Regenerate PRD" : "✨ 1-Click PRD Spec"}</span>
+                        <span>✨ 1-Click PRD Spec</span>
                       </>
                     )}
                   </button>
@@ -753,48 +765,135 @@ Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
         {/* Modal 2: View PRD Spec */}
         {selectedOpportunity && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-[#e0dedb] space-y-4 max-h-[85vh] overflow-y-auto">
-              <div className="flex justify-between items-start border-b border-[#e0dedb] pb-3">
-                <div>
-                  <span className="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded uppercase">
-                    ✨ Autonomous PRD Specification
-                  </span>
-                  <h3 className="font-extrabold text-lg text-[#37322F] mt-1">{selectedOpportunity.title}</h3>
+            <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-[#e0dedb] space-y-4 max-h-[88vh] flex flex-col">
+              <div className="flex justify-between items-start border-b border-[#e0dedb] pb-3 shrink-0">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded uppercase flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-600" />
+                      <span>Autonomous PRD Specification</span>
+                    </span>
+                    <span className="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                      {selectedOpportunity.status || "PRD Created"}
+                    </span>
+                  </div>
+                  <h3 className="font-extrabold text-xl text-[#37322F]">{selectedOpportunity.title}</h3>
                 </div>
-                <button onClick={() => setSelectedOpportunity(null)} className="text-stone-400 hover:text-stone-800 text-xl font-bold">
+                <button
+                  onClick={() => setSelectedOpportunity(null)}
+                  className="text-stone-400 hover:text-stone-800 text-xl font-bold p-1 rounded-lg hover:bg-stone-100 transition-colors"
+                >
                   ✕
                 </button>
               </div>
 
-              <div className="space-y-4 text-xs">
+              {/* Impact Badges */}
+              <div className="grid grid-cols-3 gap-3 bg-[#FAF8F6] p-3 rounded-xl border border-[#e0dedb] text-xs shrink-0">
                 <div>
-                  <h4 className="font-bold text-[#828387] uppercase tracking-wider text-[10px] mb-1">
-                    Problem Summary & ARR Risk
-                  </h4>
-                  <p className="text-[#37322F] bg-[#FAF8F6] p-3 rounded-xl border border-[#e0dedb]">
-                    {selectedOpportunity.problem_summary || selectedOpportunity.summary}
-                  </p>
+                  <span className="text-[10px] font-bold text-[#828387] uppercase tracking-wider block">Target Product</span>
+                  <span className="font-bold text-[#37322F]">{selectedOpportunity.product?.name || "Core Platform"}</span>
                 </div>
-
                 <div>
-                  <h4 className="font-bold text-[#828387] uppercase tracking-wider text-[10px] mb-2">
-                    Acceptance Criteria
-                  </h4>
-                  <div className="bg-emerald-50/60 border border-emerald-200/80 p-3 rounded-xl text-emerald-950 font-mono space-y-1">
-                    <div>✓ Query timeout threshold increased to 120,000ms</div>
-                    <div>✓ Zero 504 Gateway Timeout errors under 1,000 concurrent user exports</div>
-                    <div>✓ Automated non-technical status update dispatched to Sales team</div>
-                  </div>
+                  <span className="text-[10px] font-bold text-[#828387] uppercase tracking-wider block">ARR Protection</span>
+                  <span className="font-extrabold text-emerald-700">${Number(selectedOpportunity.affected_arr || 750000).toLocaleString()} ARR</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-[#828387] uppercase tracking-wider block">Telemetry</span>
+                  <span className="font-bold text-[#37322F]">{selectedOpportunity.ticket_count || 1} Tickets ({selectedOpportunity.customer_count || 1} Accounts)</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#e0dedb] flex justify-end gap-2">
+              {/* Full PRD Document Container */}
+              <div className="overflow-y-auto flex-1 pr-2 space-y-4 text-xs leading-relaxed text-[#37322F] border border-[#e0dedb] rounded-xl p-5 bg-[#FAF8F6]">
+                {selectedOpportunity.prd_content ? (
+                  <div className="space-y-3">
+                    {selectedOpportunity.prd_content.split('\n').map((line: string, idx: number) => {
+                      if (line.startsWith('# ')) {
+                        return <h1 key={idx} className="text-base font-black text-[#37322F] border-b border-[#e0dedb] pb-2 pt-1">{line.replace('# ', '')}</h1>;
+                      }
+                      if (line.startsWith('## ')) {
+                        return <h2 key={idx} className="text-sm font-extrabold text-emerald-800 mt-4 mb-1 border-b border-stone-200 pb-1">{line.replace('## ', '')}</h2>;
+                      }
+                      if (line.startsWith('### ')) {
+                        return <h3 key={idx} className="text-xs font-bold text-[#37322F] mt-3 mb-1">{line.replace('### ', '')}</h3>;
+                      }
+                      if (line.startsWith('- ') || line.startsWith('* ')) {
+                        const content = line.slice(2);
+                        return (
+                          <div key={idx} className="flex items-start gap-2 pl-2 text-xs font-medium text-[#4a4643]">
+                            <span className="text-emerald-600 font-bold">•</span>
+                            <span>{content.replace(/\*\*(.*?)\*\*/g, '$1')}</span>
+                          </div>
+                        );
+                      }
+                      if (/^\d+\.\s/.test(line)) {
+                        return (
+                          <div key={idx} className="flex items-start gap-2 pl-2 text-xs font-medium text-[#4a4643]">
+                            <span className="text-amber-600 font-bold">{line.match(/^\d+\./)?.[0]}</span>
+                            <span>{line.replace(/^\d+\.\s/, '').replace(/\*\*(.*?)\*\*/g, '$1')}</span>
+                          </div>
+                        );
+                      }
+                      if (!line.trim()) return <div key={idx} className="h-1" />;
+                      return <p key={idx} className="text-xs text-[#37322F] font-medium">{line}</p>;
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-bold text-[#828387] uppercase tracking-wider text-[10px] mb-1">
+                        Problem Summary & ARR Risk
+                      </h4>
+                      <p className="text-[#37322F] bg-white p-3 rounded-xl border border-[#e0dedb]">
+                        {selectedOpportunity.problem_summary || selectedOpportunity.summary || `Telemetry clustered ${selectedOpportunity.ticket_count || 1} support tickets across ${selectedOpportunity.customer_count || 1} key accounts representing $${Number(selectedOpportunity.affected_arr || 750000).toLocaleString()} ARR protection.`}
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-[#828387] uppercase tracking-wider text-[10px] mb-2">
+                        Acceptance Criteria & Remediation Targets
+                      </h4>
+                      <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-950 font-mono space-y-1.5 text-[11px]">
+                        <div>✓ Upstream query execution timeout increased to 120,000ms</div>
+                        <div>✓ Zero 504 Gateway Timeout errors under peak concurrent user exports</div>
+                        <div>✓ Dynamic connection pool auto-scaling enabled for database worker cluster</div>
+                        <div>✓ Automated customer briefing update dispatched to Sales team</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="pt-3 border-t border-[#e0dedb] flex items-center justify-between shrink-0">
                 <button
-                  onClick={() => setSelectedOpportunity(null)}
-                  className="px-4 py-2 bg-[#37322F] text-white font-bold text-xs rounded-lg hover:bg-[#252220]"
+                  onClick={() => {
+                    const textToCopy = selectedOpportunity.prd_content || selectedOpportunity.title;
+                    navigator.clipboard.writeText(textToCopy);
+                    showToast("✓ PRD markdown copied to clipboard!");
+                  }}
+                  className="px-4 py-2 bg-[#FAF8F6] hover:bg-stone-200 border border-[#e0dedb] text-[#37322F] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
                 >
-                  Close Specification
+                  <FileText className="w-3.5 h-3.5 text-stone-600" />
+                  <span>Copy PRD Spec</span>
                 </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleGeneratePrd(selectedOpportunity.id)}
+                    disabled={generatingPrdId === selectedOpportunity.id}
+                    className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-[#37322F] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 border border-[#e0dedb] disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-amber-600 ${generatingPrdId === selectedOpportunity.id ? "animate-spin" : ""}`} />
+                    <span>{generatingPrdId === selectedOpportunity.id ? "Regenerating..." : "Regenerate PRD"}</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedOpportunity(null)}
+                    className="px-4 py-2 bg-[#37322F] text-white font-bold text-xs rounded-lg hover:bg-[#252220] transition-colors"
+                  >
+                    Close Specification
+                  </button>
+                </div>
               </div>
             </div>
           </div>
