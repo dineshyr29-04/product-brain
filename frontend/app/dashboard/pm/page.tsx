@@ -348,21 +348,20 @@ export default function PMDashboardPage() {
     setGeneratingPrdId(oppId);
 
     const steps = [
-      "🔍 Step 1/4: Aggregating telemetry logs & ticket clusters...",
-      "📊 Step 2/4: Calculating ARR risk & account impact...",
-      "🤖 Step 3/4: Intelligence Engine synthesizing 5-section PRD...",
-      "✨ Step 4/4: Finalizing acceptance criteria & architecture..."
+      "🔍 Clustering telemetry...",
+      "📊 Calculating ARR impact...",
+      "🤖 Synthesizing PRD spec...",
+      "✨ Finalizing architecture..."
     ];
 
     let currentStep = 0;
     setPrdLoadingStatus(steps[0]);
-    showToast(steps[0]);
+    showToast("✨ Intelligence Engine is synthesizing 5-section PRD spec...");
 
     const interval = setInterval(() => {
       currentStep = (currentStep + 1) % steps.length;
       setPrdLoadingStatus(steps[currentStep]);
-      showToast(steps[currentStep]);
-    }, 850);
+    }, 1500);
 
     try {
       const res = await axios.post(`${API_BASE}/opportunities/${oppId}/generate-prd`);
@@ -683,12 +682,12 @@ Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
                       }
                     }}
                     disabled={generatingPrdId === opp.id}
-                    className="px-4 py-2 bg-[#252220] hover:bg-black text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="min-w-[210px] justify-center px-4 py-2 bg-[#252220] hover:bg-black text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     {generatingPrdId === opp.id ? (
                       <>
-                        <RefreshCw className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-                        <span>Synthesizing PRD...</span>
+                        <RefreshCw className="w-3.5 h-3.5 text-amber-300 animate-spin shrink-0" />
+                        <span>{prdLoadingStatus || "Synthesizing PRD..."}</span>
                       </>
                     ) : opp.prd_content ? (
                       <>
@@ -933,10 +932,10 @@ Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
                   <button
                     onClick={() => handleGeneratePrd(selectedOpportunity.id)}
                     disabled={generatingPrdId === selectedOpportunity.id}
-                    className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-[#37322F] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 border border-[#e0dedb] disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="min-w-[190px] justify-center px-4 py-2 bg-stone-100 hover:bg-stone-200 text-[#37322F] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 border border-[#e0dedb] disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 text-amber-600 ${generatingPrdId === selectedOpportunity.id ? "animate-spin" : ""}`} />
-                    <span>{generatingPrdId === selectedOpportunity.id ? "Regenerating..." : "Regenerate PRD"}</span>
+                    <RefreshCw className={`w-3.5 h-3.5 text-amber-600 ${generatingPrdId === selectedOpportunity.id ? "animate-spin shrink-0" : ""}`} />
+                    <span>{generatingPrdId === selectedOpportunity.id ? (prdLoadingStatus || "Regenerating...") : "Regenerate PRD"}</span>
                   </button>
                   <button
                     onClick={() => setSelectedOpportunity(null)}
