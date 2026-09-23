@@ -94,7 +94,13 @@ router.get('/pm', async (req, res) => {
         return sum + (cust ? Number(cust.arr) : 0);
       }, 0);
 
-      return { \n        product_id: prod.id, \n        product_name: prod.name, \n        open_tickets: prodTickets.length, \n        customers_affected: prodCustIds.size, \n        affected_arr: prodArr\n }; \n
+      return {
+        product_id: prod.id,
+        product_name: prod.name,
+        open_tickets: prodTickets.length,
+        customers_affected: prodCustIds.size,
+        affected_arr: prodArr
+      };
     });
 
     res.json({
