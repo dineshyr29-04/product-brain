@@ -168,7 +168,7 @@ ${prd.acceptanceCriteria.map((ac) => `- [ ] ${ac}`).join("\n")}
                 <span>PRD Specifications & Closed Tickets Archive</span>
               </h1>
               <p className="text-xs text-[#828387] mt-1">
-                Maintain autonomous Gemini PRD documents and historical log of remediated engineering tickets.
+                Maintain autonomous PRD documents and historical log of remediated engineering tickets.
               </p>
             </div>
           </div>
