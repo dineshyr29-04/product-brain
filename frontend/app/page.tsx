@@ -199,6 +199,8 @@ export default function ProductBrainDashboard() {
     technical_logs: ""
   });
   const [rawDocumentText, setRawDocumentText] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadedImageBase64, setUploadedImageBase64] = useState<string | null>(null);
   const [submittingTicket, setSubmittingTicket] = useState(false);
 
   // Toast Helper
@@ -324,19 +326,56 @@ export default function ProductBrainDashboard() {
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadedFileName(file.name);
+
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const b64 = event.target?.result as string;
+        setUploadedImageBase64(b64);
+        if (!rawDocumentText) {
+          setRawDocumentText(`[OCR Document Image: ${file.name}]\nImage uploaded. ProductBrain AI OCR will extract and split incident tickets.`);
+        }
+        showToast(`Image "${file.name}" loaded for AI OCR.`);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        setRawDocumentText(text);
+        setUploadedImageBase64(null);
+        showToast(`Loaded ${file.name} (${text.split('\n').length} lines).`);
+      };
+      reader.readAsText(file);
+    }
+  };
+
   const handleBulkDocumentImport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rawDocumentText) return;
+    if (!rawDocumentText && !uploadedImageBase64) {
+      showToast("Please paste text or upload an incident file/image.");
+      return;
+    }
     try {
       setSubmittingTicket(true);
-      const res = await axios.post(`${API_BASE}/tickets/bulk-import`, { rawText: rawDocumentText });
+      const res = await axios.post(`${API_BASE}/tickets/bulk-import`, {
+        rawText: rawDocumentText,
+        imageBase64: uploadedImageBase64
+      });
       setIsSubmitModalOpen(false);
       setRawDocumentText("");
+      setUploadedFileName(null);
+      setUploadedImageBase64(null);
       await fetchDashboardData();
-      showToast(`Gemini AI parsed and extracted ${res.data?.count || "multiple"} tickets!`);
-    } catch (err) {
+      showToast(`Success! Gemini AI extracted and created ${res.data?.count || 1} tickets.`);
+    } catch (err: any) {
       console.error("Error bulk importing document:", err);
-      showToast("Error parsing document. Backend Gemini AI service active.");
+      showToast(err.response?.data?.error || "Error parsing document. Backend AI service active.");
     } finally {
       setSubmittingTicket(false);
     }
@@ -1619,31 +1658,101 @@ Out of Memory (OOM) memory leak when multiple concurrent users download large an
               </form>
             ) : (
               <form onSubmit={handleBulkDocumentImport} className="space-y-4">
+                {/* File Upload / OCR Dropzone */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-[#605a57] uppercase">
-                      Paste Support Log Document / Incident List
+                  <label className="block text-xs font-bold text-[#605a57] uppercase mb-1">
+                    Upload Incident File or Document Scan (OCR)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <label
+                      htmlFor="bulk-file-input"
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-white border border-[#d8d5d0] hover:bg-[#eae7e3] text-xs font-semibold rounded-lg text-[#37322F] transition-all shadow-xs"
+                    >
+                      <Download className="w-3.5 h-3.5 rotate-180 text-[#0ea5e9]" />
+                      <span>Choose File (.txt, .csv, .log, .png, .jpg)</span>
                     </label>
+                    <input
+                      id="bulk-file-input"
+                      type="file"
+                      accept=".txt,.csv,.log,.json,.pdf,image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+
                     <button
                       type="button"
                       onClick={insertSampleLog}
-                      className="text-[11px] font-semibold text-[#0ea5e9] hover:underline"
+                      className="text-xs font-semibold text-[#0ea5e9] hover:underline flex items-center gap-1"
                     >
-                      Load Sample Incident Document
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Load 3-Incident Test Sample
                     </button>
+                  </div>
+
+                  {uploadedFileName && (
+                    <div className="mt-2 flex items-center justify-between px-3 py-1.5 bg-[#eae7e3] border border-[#d8d5d0] rounded-lg text-xs text-[#37322F]">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-3.5 h-3.5 text-[#37322F]" />
+                        <span className="font-medium font-mono">{uploadedFileName}</span>
+                        {uploadedImageBase64 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 bg-sky-100 text-sky-800 rounded">
+                            OCR Mode
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadedFileName(null);
+                          setUploadedImageBase64(null);
+                          setRawDocumentText("");
+                        }}
+                        className="text-[#828387] hover:text-red-600 font-bold text-xs"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+
+                  {uploadedImageBase64 && (
+                    <div className="mt-2 p-2 border border-[#d8d5d0] rounded-lg bg-white flex items-center gap-3">
+                      <img
+                        src={uploadedImageBase64}
+                        alt="OCR Preview"
+                        className="w-16 h-16 object-cover rounded border border-[#e0dedb]"
+                      />
+                      <div className="text-xs">
+                        <div className="font-bold text-[#37322F]">Document Image OCR Ready</div>
+                        <div className="text-[#828387] text-[11px]">
+                          Gemini Vision OCR will scan text and split multiple incident tickets automatically.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-[#605a57] uppercase">
+                      Raw Text / Pasted Document Content
+                    </label>
+                    {rawDocumentText && (
+                      <span className="text-[11px] font-mono text-emerald-600 font-semibold">
+                        ~{Math.max(1, rawDocumentText.split(/(?:\r?\n){2,}|---|===|Incident\s*#?\d*/i).filter(Boolean).length)} incident(s) detected
+                      </span>
+                    )}
                   </div>
                   <textarea
                     rows={6}
-                    placeholder="Paste a multi-ticket support report or email log. ProductBrain AI will read, split, and extract individual tickets automatically..."
+                    placeholder="Paste a multi-ticket support report, customer email trail, or logs. ProductBrain AI will read, split, and extract individual tickets automatically..."
                     value={rawDocumentText}
                     onChange={(e) => setRawDocumentText(e.target.value)}
                     className="w-full bg-[#fbfaf9] border border-[#e0dedb] rounded-lg p-3 text-xs font-mono focus:outline-none focus:border-[#37322F]"
-                    required
                   />
                 </div>
 
                 <div className="p-3 bg-[#fbfaf9] rounded-lg border border-[#e0dedb] text-xs text-[#605a57]">
-                  <strong>Gemini AI Document Reader:</strong> Automatically detects multiple incidents, extracts customer ARR, assigns priorities, and populates the backlog.
+                  <strong>Gemini AI Document Reader & Splitter:</strong> Automatically detects multiple incidents, extracts customer ARR, matches products, assigns priorities, and populates the backlog.
                 </div>
 
                 <div className="pt-2 flex justify-end gap-3">
@@ -1656,8 +1765,8 @@ Out of Memory (OOM) memory leak when multiple concurrent users download large an
                   </button>
                   <button
                     type="submit"
-                    disabled={submittingTicket}
-                    className="px-5 py-2 bg-[#37322F] text-white font-bold text-xs rounded-lg"
+                    disabled={submittingTicket || (!rawDocumentText.trim() && !uploadedImageBase64)}
+                    className="px-5 py-2 bg-[#37322F] text-white font-bold text-xs rounded-lg hover:bg-[#252220] transition-all disabled:opacity-50"
                   >
                     {submittingTicket ? "Parsing & Splitting..." : "Import & Split Document"}
                   </button>
