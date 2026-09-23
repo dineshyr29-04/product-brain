@@ -197,7 +197,7 @@ export default function PMDashboardPage() {
     try {
       const res = await axios.post(`${API_BASE}/tickets/bulk-import`, { rawText: bulkText });
       if (res.data?.success) {
-        showToast(`✓ Gemini processed ${res.data.count} incidents into structured tickets!`);
+        showToast(`✓ Processed ${res.data.count} incidents into structured tickets!`);
         setShowBulkModal(false);
         setBulkText("");
         await fetchDashboardData();
@@ -214,7 +214,7 @@ export default function PMDashboardPage() {
     try {
       const res = await axios.post(`${API_BASE}/opportunities/${oppId}/generate-prd`);
       if (res.data?.success) {
-        showToast("✓ Comprehensive PRD generated via Gemini 2.5 Flash!");
+        showToast("✓ Comprehensive PRD generated autonomously!");
         setSelectedOpportunity(res.data.data);
         await fetchDashboardData();
       }
@@ -473,7 +473,7 @@ Urgency: High priority.`
             <div>
               <h2 className="text-base font-bold text-[#37322F] flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-purple-600" />
-                <span>Detected Product Opportunities (Gemini AI Clustered)</span>
+                <span>Detected Product Opportunities (Intelligently Clustered)</span>
               </h2>
               <p className="text-xs text-[#828387] mt-0.5">
                 Incidents aggregated by category to justify high-impact roadmap investments with real ARR metrics.
@@ -760,7 +760,7 @@ Urgency: High priority.`
                   <span>AI Bulk Document & OCR Reader</span>
                 </h3>
                 <span className="text-xs text-[#828387]">
-                  Paste incident emails or log documents. Gemini parses & splits into individual tickets.
+                  Paste incident emails or log documents. Automated engine parses & splits into individual tickets.
                 </span>
               </div>
               <button onClick={() => setShowBulkModal(false)} className="text-stone-400 hover:text-stone-800 text-lg">✕</button>
@@ -792,7 +792,7 @@ Urgency: High priority.`
                   className="px-4 py-2 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-                  <span>{isSubmitting ? "Gemini Parsing..." : "Parse & Split with Gemini"}</span>
+                  <span>{isSubmitting ? "Parsing..." : "Parse & Split Document"}</span>
                 </button>
               </div>
             </div>

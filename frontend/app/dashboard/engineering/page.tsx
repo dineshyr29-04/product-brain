@@ -99,7 +99,7 @@ export default function EngineeringDashboardPage() {
         resolution_note: resolutionNote || "Technical defect remediated and verified."
       });
       if (res.data?.success) {
-        showToast("✓ Ticket resolved & Gemini customer summary generated for Sales!");
+        showToast("✓ Ticket resolved & automated customer summary generated for Sales!");
         setResolvingTicket(null);
         setResolutionNote("");
         await fetchEngData();
@@ -294,7 +294,7 @@ export default function EngineeringDashboardPage() {
                 <span>Engineering Queue & Execution Pipeline</span>
               </h2>
               <p className="text-xs text-[#828387]">
-                Resolving an incident triggers Gemini AI to synthesize a non-technical update for Sales.
+                Resolving an incident triggers autonomous synthesis of a non-technical update for Sales.
               </p>
             </div>
 
@@ -458,7 +458,7 @@ export default function EngineeringDashboardPage() {
               <div className="bg-purple-50 border border-purple-200 text-purple-900 p-2.5 rounded-lg text-xs flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
                 <span>
-                  Gemini AI will automatically translate this note into customer-facing communication for the Sales team.
+                  The platform will automatically translate this note into customer-facing communication for the Sales team.
                 </span>
               </div>
               <div className="pt-2 flex justify-end gap-2">

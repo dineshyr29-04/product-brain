@@ -7,13 +7,13 @@ let genAI = null;
 if (isGeminiConfigured) {
   try {
     genAI = new GoogleGenerativeAI(apiKey);
-    console.log('✅ Google Gemini API Service initialized');
+    console.log('✅ Intelligence API Service initialized');
   } catch (err) {
-    console.warn('⚠️ Gemini initialization failed:', err.message);
+    console.warn('⚠️ Intelligence API initialization failed:', err.message);
   }
 }
 
-// Get robust Gemini generative model
+// Get generative intelligence model
 function getGeminiModel() {
   if (!genAI) return null;
   try {

@@ -386,7 +386,7 @@ export default function SalesRadarPage() {
                 <span>Account Escalation Radar & AI Client Updates</span>
               </h2>
               <p className="text-xs text-[#828387]">
-                Customer-facing updates synthesized by Gemini when engineering resolves an incident.
+                Customer-facing updates synthesized automatically when engineering resolves an incident.
               </p>
             </div>
 
@@ -442,7 +442,7 @@ export default function SalesRadarPage() {
                     <th className="py-2.5 px-4">Impacted Product</th>
                     <th className="py-2.5 px-4">Issue Description</th>
                     <th className="py-2.5 px-4">Status</th>
-                    <th className="py-2.5 px-4">Gemini AI Client Update</th>
+                    <th className="py-2.5 px-4">Automated Client Update</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f0ede9]">
