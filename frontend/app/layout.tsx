@@ -25,6 +25,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased bg-[#F7F5F3] text-[#37322F]">
         <ClerkProvider
+          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
           signInFallbackRedirectUrl="/"
