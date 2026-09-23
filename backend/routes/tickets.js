@@ -11,7 +11,8 @@ const createTicketSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().min(5, 'Description must be at least 5 characters'),
   priority: z.enum(['Low', 'Medium', 'High', 'Critical']).optional(),
-  category: z.string().optional()
+  category: z.string().optional(),
+  technical_logs: z.string().optional()
 });
 
 // GET /api/tickets - List all tickets
@@ -38,6 +39,44 @@ router.post('/create', async (req, res) => {
   }
 });
 
+// POST /api/tickets/bulk-import - AI Document Reader, OCR & Multi-Ticket Splitter
+router.post('/bulk-import', async (req, res) => {
+  try {
+    const { rawText, imageBase64 } = req.body;
+    const customers = await db.getCustomers();
+    const products = await db.getProducts();
+
+    const parsedTickets = await aiService.parseBulkDocumentOrOCR({
+      rawText,
+      imageBase64,
+      customers,
+      products
+    });
+
+    const createdTickets = [];
+    for (const tData of parsedTickets) {
+      const ticket = await db.createTicket({
+        customer_id: tData.customer_id || customers[0]?.id || 'cust-1',
+        product_id: tData.product_id || products[0]?.id || 'prod-1',
+        title: tData.title || 'Imported Incident Ticket',
+        description: tData.description || 'Extracted via AI Document Reader',
+        priority: tData.priority || 'High',
+        category: tData.category || 'Export Performance',
+        technical_logs: tData.technical_logs || null
+      });
+      createdTickets.push(ticket);
+    }
+
+    res.status(201).json({
+      success: true,
+      count: createdTickets.length,
+      data: createdTickets
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // PATCH /api/tickets/:id/status - Update ticket status (Engineering Action)
 router.patch('/:id/status', async (req, res) => {
   try {
@@ -50,7 +89,6 @@ router.patch('/:id/status', async (req, res) => {
 
     let aiCustomerSummary = null;
 
-    // Trigger AI Customer-Facing Resolution Summary when status changes to Resolved!
     if (status === 'Resolved') {
       const currentTicket = await db.getTicketById(id);
       if (currentTicket) {
