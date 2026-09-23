@@ -455,5 +455,13 @@ export const db = {
     memoryDb.tickets = [...initialTickets];
     memoryDb.product_opportunities = [...initialOpportunities];
     return { success: true, count: initialTickets.length, message: 'Demo tickets and opportunities loaded' };
+  },
+
+  async getPersonas() {
+    return [
+      { id: 'p-1', name: 'Product Manager', email: 'pm@productbrain.io', role: 'pm', department: 'Product Strategy' },
+      { id: 'p-2', name: 'Sales Lead', email: 'sales@productbrain.io', role: 'sales', department: 'Sales & Success' },
+      { id: 'p-3', name: 'Staff Engineer', email: 'eng@productbrain.io', role: 'engineering', department: 'Engineering' }
+    ];
   }
 };

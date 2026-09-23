@@ -235,7 +235,7 @@ export default function PMDashboardPage() {
     showToast("✓ Team member access revoked.");
   };
 
-  const [generatingPrd, setGeneratingPrd] = useState(false);
+  const [generatingPrdId, setGeneratingPrdId] = useState<string | null>(null);
 
   // Form State
   const [ticketForm, setTicketForm] = useState({
@@ -340,7 +340,8 @@ export default function PMDashboardPage() {
   };
 
   const handleGeneratePrd = async (oppId: string) => {
-    setGeneratingPrd(true);
+    setGeneratingPrdId(oppId);
+    showToast("✨ Intelligence Engine is synthesizing 5-section PRD spec...");
     try {
       const res = await axios.post(`${API_BASE}/opportunities/${oppId}/generate-prd`);
       if (res.data?.success) {
@@ -351,7 +352,7 @@ export default function PMDashboardPage() {
     } catch {
       showToast("Failed to generate PRD. Please verify backend.");
     } finally {
-      setGeneratingPrd(false);
+      setGeneratingPrdId(null);
     }
   };
 
@@ -649,11 +650,20 @@ Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
 
                   <button
                     onClick={() => handleGeneratePrd(opp.id)}
-                    disabled={generatingPrd}
-                    className="px-4 py-2 bg-[#252220] hover:bg-black text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs"
+                    disabled={generatingPrdId === opp.id}
+                    className="px-4 py-2 bg-[#252220] hover:bg-black text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>{opp.prd_content ? "View / Regenerate PRD" : "✨ 1-Click PRD Spec"}</span>
+                    {generatingPrdId === opp.id ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                        <span>Synthesizing PRD...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>{opp.prd_content ? "View / Regenerate PRD" : "✨ 1-Click PRD Spec"}</span>
+                      </>
+                    )}
                   </button>
                 </div>
               ))}
