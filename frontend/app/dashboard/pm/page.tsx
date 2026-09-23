@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DepartmentGuard from "@/components/DepartmentGuard";
+import PBLogo from "@/components/PBLogo";
 import { getTeamMembers, addTeamMember, removeTeamMember, UserProfile, getCurrentUser, logoutUser } from "@/lib/authHelper";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api";
@@ -287,9 +288,7 @@ Urgency: High priority.`
           </Link>
           <div className="h-4 w-px bg-[#d8d5d0]" />
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#37322F] text-white flex items-center justify-center font-bold text-xs">
-              PM
-            </div>
+            <PBLogo size="sm" showText={false} />
             <div>
               <span className="font-extrabold text-sm text-[#37322F] tracking-tight">Product Manager Workspace</span>
               <span className="ml-2 text-[10px] font-mono px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded font-semibold">PRD & Roadmap</span>

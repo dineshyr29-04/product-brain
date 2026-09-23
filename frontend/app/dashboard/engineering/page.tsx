@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DepartmentGuard from "@/components/DepartmentGuard";
+import PBLogo from "@/components/PBLogo";
 import { getCurrentUser, logoutUser, UserProfile } from "@/lib/authHelper";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api";
@@ -148,9 +149,7 @@ export default function EngineeringDashboardPage() {
           </Link>
           <div className="h-4 w-px bg-[#d8d5d0]" />
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
-              ENG
-            </div>
+            <PBLogo size="sm" showText={false} />
             <div>
               <span className="font-extrabold text-sm text-[#37322F] tracking-tight">Engineering Backlog</span>
               <span className="ml-2 text-[10px] font-mono px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded font-semibold">Sprint Execution</span>
