@@ -144,12 +144,12 @@ const initialOpportunities = [
   }
 ];
 
-// Memory Store for fallback / instant development — Starts at 0
+// Memory Store for fallback / instant development
 const memoryDb = {
   customers: [...defaultCustomers],
   products: [...defaultProducts],
-  tickets: [], // Starts at 0
-  product_opportunities: [] // Starts at 0
+  tickets: [...initialTickets],
+  product_opportunities: [...initialOpportunities]
 };
 
 // Database Access Layer Abstraction
