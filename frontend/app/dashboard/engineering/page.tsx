@@ -17,7 +17,11 @@ import {
   Lock,
   LogOut,
   Terminal,
-  Play
+  Play,
+  Copy,
+  UserCheck,
+  Ban,
+  Filter
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DepartmentGuard from "@/components/DepartmentGuard";
@@ -30,11 +34,15 @@ interface EngineeringTicket {
   ticketNumber: string;
   customerName: string;
   customerArr: number;
+  productName: string;
   title: string;
   stackTrace: string;
   priority: "Critical" | "High" | "Medium";
   status: "Open" | "In Progress" | "Resolved" | "Blocked";
+  assignedEngineer: string;
+  gitBranch: string;
   resolutionNote?: string;
+  blockerReason?: string;
 }
 
 const defaultTickets: EngineeringTicket[] = [
@@ -42,47 +50,62 @@ const defaultTickets: EngineeringTicket[] = [
     ticketNumber: "#1024",
     customerName: "Acme Corp",
     customerArr: 420000,
+    productName: "Product A (Core Platform)",
     title: "High Priority Export Timeout",
-    stackTrace: "QueryTimeoutException: 30000ms exceeded in db.driver.js:42",
+    stackTrace: "QueryTimeoutException: 30000ms exceeded in db.driver.js:42\n  at Database.executeQuery (/app/db/driver.js:42:11)\n  at ExportService.streamCsv (/app/services/export.js:108:5)",
     priority: "High",
-    status: "In Progress"
+    status: "In Progress",
+    assignedEngineer: "Alex Rivera (Staff Eng)",
+    gitBranch: "fix/issue-1024-db-query-timeout-pool"
   },
   {
     ticketNumber: "#1025",
     customerName: "Beta Inc",
     customerArr: 180000,
+    productName: "Product A (Core Platform)",
     title: "SSO Authentication Failure",
-    stackTrace: "SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com",
+    stackTrace: "SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com\n  at SAMLProvider.verifyHandshake (/app/auth/saml.js:84:12)",
     priority: "Medium",
-    status: "Open"
+    status: "Open",
+    assignedEngineer: "David Kim (Backend Eng)",
+    gitBranch: "fix/issue-1025-saml-handshake-retry"
   },
   {
     ticketNumber: "#1026",
     customerName: "Gamma Ltd",
     customerArr: 750000,
+    productName: "Product C (Integrations API)",
     title: "Analytics Export Timeout",
-    stackTrace: "502 Bad Gateway: Upstream rate limiter overflow [1000req/sec]",
+    stackTrace: "502 Bad Gateway: Upstream rate limiter overflow [1000req/sec]\n  at RateLimiter.checkBucket (/app/gateway/limiter.js:22:9)",
     priority: "Critical",
     status: "Resolved",
+    assignedEngineer: "Alex Rivera (Staff Eng)",
+    gitBranch: "fix/issue-1026-gateway-rate-limiter",
     resolutionNote: "Scaled database connection pool and updated query timeout limits to 120s."
   },
   {
     ticketNumber: "#1027",
     customerName: "Delta Global",
     customerArr: 520000,
+    productName: "Product B (Analytics Hub)",
     title: "Memory Leak in Report Generator",
-    stackTrace: "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory",
+    stackTrace: "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory\n  at RenderEngine.compileCanvas (/app/pdf/render.js:210:4)",
     priority: "High",
-    status: "Open"
+    status: "Open",
+    assignedEngineer: "Sarah Jenkins (Lead Eng)",
+    gitBranch: "fix/issue-1027-heap-memory-buffer"
   },
   {
     ticketNumber: "#1028",
     customerName: "Epsilon Tech",
     customerArr: 310000,
+    productName: "Product B (Analytics Hub)",
     title: "Slow Dashboard Render",
-    stackTrace: "LongTaskwarning: script execution took 11840ms on renderCanvas()",
+    stackTrace: "LongTaskwarning: script execution took 11840ms on renderCanvas()\n  at CanvasChart.drawPoints (/app/ui/canvas.js:55:18)",
     priority: "Medium",
-    status: "Open"
+    status: "Open",
+    assignedEngineer: "David Kim (Backend Eng)",
+    gitBranch: "fix/issue-1028-canvas-render-optimize"
   }
 ];
 
@@ -100,11 +123,15 @@ export default function EngineeringDashboardPage() {
   const [resolutionNote, setResolutionNote] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Inspector Modal State
+  const [inspectingTicket, setInspectingTicket] = useState<EngineeringTicket | null>(null);
+
   // New Incident Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTicketForm, setNewTicketForm] = useState({
     customerName: "Acme Corp",
     customerArr: "420000",
+    productName: "Product A (Core Platform)",
     title: "",
     stackTrace: "",
     priority: "High" as "Critical" | "High" | "Medium"
@@ -113,6 +140,7 @@ export default function EngineeringDashboardPage() {
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [productFilter, setProductFilter] = useState("All");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -128,9 +156,7 @@ export default function EngineeringDashboardPage() {
     showToast("Reset Engineering Backlog to 0 Baseline.");
     try {
       await axios.post(`${API_BASE}/dashboards/reset-to-zero`);
-    } catch {
-      // client fallback
-    }
+    } catch {}
   };
 
   const handleLoadDemoData = async () => {
@@ -139,9 +165,7 @@ export default function EngineeringDashboardPage() {
     showToast("Loaded full Engineering Backlog demo data.");
     try {
       await axios.get(`${API_BASE}/dashboards/engineering`);
-    } catch {
-      // client fallback
-    }
+    } catch {}
   };
 
   const handleRefresh = async () => {
@@ -157,6 +181,30 @@ export default function EngineeringDashboardPage() {
       prev.map((t) => (t.ticketNumber === ticketNumber ? { ...t, status: "In Progress" } : t))
     );
     showToast(`✓ Ticket ${ticketNumber} moved to 'In Progress'.`);
+  };
+
+  const handleToggleBlock = (ticketNumber: string) => {
+    setTickets((prev) =>
+      prev.map((t) => {
+        if (t.ticketNumber === ticketNumber) {
+          const isBlocked = t.status === "Blocked";
+          return {
+            ...t,
+            status: isBlocked ? "Open" : "Blocked",
+            blockerReason: isBlocked ? undefined : "Awaiting upstream DB driver update"
+          };
+        }
+        return t;
+      })
+    );
+    showToast(`✓ Ticket ${ticketNumber} status updated.`);
+  };
+
+  const handleAssignEngineer = (ticketNumber: string, engineer: string) => {
+    setTickets((prev) =>
+      prev.map((t) => (t.ticketNumber === ticketNumber ? { ...t, assignedEngineer: engineer } : t))
+    );
+    showToast(`✓ Assigned ${ticketNumber} to ${engineer}.`);
   };
 
   const handleResolveTicket = async () => {
@@ -192,10 +240,13 @@ export default function EngineeringDashboardPage() {
       ticketNumber: `#${1024 + tickets.length + 1}`,
       customerName: newTicketForm.customerName,
       customerArr: Number(newTicketForm.customerArr) || 100000,
+      productName: newTicketForm.productName,
       title: newTicketForm.title,
       stackTrace: newTicketForm.stackTrace || "Runtime Exception logged",
       priority: newTicketForm.priority,
-      status: "Open"
+      status: "Open",
+      assignedEngineer: "Alex Rivera (Staff Eng)",
+      gitBranch: `fix/issue-${1024 + tickets.length + 1}-patch`
     };
 
     setTickets((prev) => [newTicket, ...prev]);
@@ -204,6 +255,7 @@ export default function EngineeringDashboardPage() {
     setNewTicketForm({
       customerName: "Acme Corp",
       customerArr: "420000",
+      productName: "Product A (Core Platform)",
       title: "",
       stackTrace: "",
       priority: "High"
@@ -221,9 +273,10 @@ export default function EngineeringDashboardPage() {
         t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.stackTrace.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "All" || t.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesProduct = productFilter === "All" || t.productName === productFilter;
+      return matchesSearch && matchesStatus && matchesProduct;
     });
-  }, [activeTickets, searchQuery, statusFilter]);
+  }, [activeTickets, searchQuery, statusFilter, productFilter]);
 
   // Metrics calculations
   const openCount = isZeroBaseline ? 0 : activeTickets.filter((t) => t.status === "Open").length;
@@ -326,9 +379,8 @@ export default function EngineeringDashboardPage() {
 
         {/* Main Content Area */}
         <main className="w-full px-6 lg:px-10 py-8 space-y-8">
-          {/* Top KPI Strip (5 metric items) */}
+          {/* Top KPI Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* 1. Open Queue */}
             <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
                 OPEN QUEUE
@@ -338,7 +390,6 @@ export default function EngineeringDashboardPage() {
               </div>
             </div>
 
-            {/* 2. In Progress */}
             <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
                 IN PROGRESS
@@ -348,20 +399,24 @@ export default function EngineeringDashboardPage() {
               </div>
             </div>
 
-            {/* 3. Blocked */}
             <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
                 BLOCKED
               </span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold text-[#37322F]">{blockedCount}</span>
-                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  ✓ 0 Blockers
+                <span
+                  className={`text-xs font-semibold px-2 py-0.5 rounded border ${
+                    blockedCount === 0
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-rose-700 bg-rose-50 border-rose-200"
+                  }`}
+                >
+                  {blockedCount === 0 ? "✓ 0 Blockers" : "Requires Unblocking"}
                 </span>
               </div>
             </div>
 
-            {/* 4. Resolved Today */}
             <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
                 RESOLVED TODAY
@@ -371,7 +426,6 @@ export default function EngineeringDashboardPage() {
               </div>
             </div>
 
-            {/* 5. Average Resolution Time */}
             <div className="bg-white border border-[#e0dedb] rounded-xl p-5 shadow-xs">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#828387] block">
                 Average Resolution Time
@@ -385,7 +439,7 @@ export default function EngineeringDashboardPage() {
           </div>
 
           {/* Main Table Section */}
-          <section className="bg-white border border-[#e0dedb] rounded-xl shadow-xs overflow-hidden space-y-0">
+          <section className="bg-white border border-[#e0dedb] rounded-xl shadow-xs overflow-hidden">
             <div className="p-6 border-b border-[#e0dedb] flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-extrabold text-[#37322F] flex items-center gap-2">
@@ -393,12 +447,11 @@ export default function EngineeringDashboardPage() {
                   <span>Engineering Technical Backlog Queue</span>
                 </h2>
                 <p className="text-xs text-[#828387] mt-0.5">
-                  Technical exception trace logs and real-time incident resolution workflow.
+                  Technical exception trace logs, owner assignment, and real-time incident resolution workflow.
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                {/* Search & Filter */}
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 text-[#828387] absolute left-2.5 top-2.5" />
                   <input
@@ -406,9 +459,20 @@ export default function EngineeringDashboardPage() {
                     placeholder="Search ticket / stack trace..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="text-xs pl-8 pr-3 py-1.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F] w-48 focus:outline-none"
+                    className="text-xs pl-8 pr-3 py-1.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F] w-44 focus:outline-none"
                   />
                 </div>
+
+                <select
+                  value={productFilter}
+                  onChange={(e) => setProductFilter(e.target.value)}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F] font-medium"
+                >
+                  <option value="All">All Products</option>
+                  <option value="Product A (Core Platform)">Product A (Core Platform)</option>
+                  <option value="Product B (Analytics Hub)">Product B (Analytics Hub)</option>
+                  <option value="Product C (Integrations API)">Product C (Integrations API)</option>
+                </select>
 
                 <select
                   value={statusFilter}
@@ -418,6 +482,7 @@ export default function EngineeringDashboardPage() {
                   <option value="All">All Statuses</option>
                   <option value="Open">Open</option>
                   <option value="In Progress">In Progress</option>
+                  <option value="Blocked">Blocked</option>
                   <option value="Resolved">Resolved</option>
                 </select>
 
@@ -449,7 +514,7 @@ export default function EngineeringDashboardPage() {
                       <th className="py-3 px-6">TICKET #</th>
                       <th className="py-3 px-4">CUSTOMER ACCOUNT</th>
                       <th className="py-3 px-6">INCIDENT DETAILS & TECHNICAL LOGS</th>
-                      <th className="py-3 px-4">CUSTOMER ARR</th>
+                      <th className="py-3 px-4">ASSIGNED ENGINEER</th>
                       <th className="py-3 px-4">PRIORITY</th>
                       <th className="py-3 px-4">STATUS</th>
                       <th className="py-3 px-6 text-right">ACTIONS</th>
@@ -458,27 +523,37 @@ export default function EngineeringDashboardPage() {
                   <tbody className="divide-y divide-[#f0ede9]">
                     {filteredTickets.map((t) => (
                       <tr key={t.ticketNumber} className="hover:bg-[#FAF8F6] transition-colors">
-                        {/* Ticket Number */}
                         <td className="py-4 px-6 font-mono font-extrabold text-sm text-[#37322F]">
                           {t.ticketNumber}
                         </td>
 
-                        {/* Customer Account */}
-                        <td className="py-4 px-4 font-extrabold text-sm text-[#37322F]">
-                          {t.customerName}
+                        <td className="py-4 px-4">
+                          <div className="font-extrabold text-sm text-[#37322F]">{t.customerName}</div>
+                          <div className="font-mono text-xs text-emerald-700 font-bold mt-0.5">
+                            ${t.customerArr.toLocaleString()} ARR
+                          </div>
                         </td>
 
-                        {/* Details & Terminal Stack Trace */}
                         <td className="py-4 px-6 max-w-md space-y-2">
                           <div className="font-extrabold text-sm text-[#37322F]">{t.title}</div>
 
-                          {/* Terminal Stack Trace Box */}
-                          <div className="bg-[#1C1917] text-[#E7E5E4] p-3 rounded-lg font-mono text-[11px] border border-[#292524] shadow-inner space-y-1">
-                            <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold border-b border-[#292524] pb-1 mb-1">
-                              <Terminal className="w-3 h-3 text-emerald-400" />
-                              <span>STACK TRACE / LOG</span>
+                          {/* Interactive Terminal Code Block */}
+                          <div
+                            onClick={() => setInspectingTicket(t)}
+                            className="bg-[#1C1917] text-[#E7E5E4] p-3 rounded-lg font-mono text-[11px] border border-[#292524] shadow-inner space-y-1 cursor-pointer hover:border-amber-400 transition-all group"
+                          >
+                            <div className="flex items-center justify-between text-[10px] text-emerald-400 font-bold border-b border-[#292524] pb-1 mb-1">
+                              <span className="flex items-center gap-1.5">
+                                <Terminal className="w-3 h-3 text-emerald-400" />
+                                <span>STACK TRACE LOG</span>
+                              </span>
+                              <span className="text-stone-400 group-hover:text-amber-300 transition-colors">
+                                Inspect Details 🔍
+                              </span>
                             </div>
-                            <div className="break-all leading-relaxed text-amber-200">{t.stackTrace}</div>
+                            <div className="break-all leading-relaxed text-amber-200 truncate">
+                              {t.stackTrace.split("\n")[0]}
+                            </div>
                           </div>
 
                           {t.resolutionNote && (
@@ -487,14 +562,28 @@ export default function EngineeringDashboardPage() {
                               {t.resolutionNote}
                             </div>
                           )}
+
+                          {t.blockerReason && (
+                            <div className="bg-rose-50 border border-rose-200 text-rose-800 p-2 rounded-lg text-[10px]">
+                              <span className="font-bold text-rose-700">Blocker Reason: </span>
+                              {t.blockerReason}
+                            </div>
+                          )}
                         </td>
 
-                        {/* Customer ARR */}
-                        <td className="py-4 px-4 font-mono font-bold text-sm text-[#37322F]">
-                          ${t.customerArr.toLocaleString()}
+                        {/* Assigned Engineer Selector */}
+                        <td className="py-4 px-4">
+                          <select
+                            value={t.assignedEngineer}
+                            onChange={(e) => handleAssignEngineer(t.ticketNumber, e.target.value)}
+                            className="text-xs p-1.5 rounded-lg border border-[#d8d5d0] bg-white text-[#37322F] font-semibold"
+                          >
+                            <option value="Alex Rivera (Staff Eng)">Alex Rivera (Staff Eng)</option>
+                            <option value="David Kim (Backend Eng)">David Kim (Backend Eng)</option>
+                            <option value="Sarah Jenkins (Lead Eng)">Sarah Jenkins (Lead Eng)</option>
+                          </select>
                         </td>
 
-                        {/* Priority */}
                         <td className="py-4 px-4">
                           <span
                             className={`px-2.5 py-1 text-[11px] font-extrabold rounded border ${
@@ -509,7 +598,6 @@ export default function EngineeringDashboardPage() {
                           </span>
                         </td>
 
-                        {/* Status */}
                         <td className="py-4 px-4">
                           <span
                             className={`px-2.5 py-1 text-[11px] font-extrabold rounded border ${
@@ -517,6 +605,8 @@ export default function EngineeringDashboardPage() {
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : t.status === "In Progress"
                                 ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : t.status === "Blocked"
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
                                 : "bg-amber-50 text-amber-700 border-amber-200"
                             }`}
                           >
@@ -524,12 +614,11 @@ export default function EngineeringDashboardPage() {
                           </span>
                         </td>
 
-                        {/* Actions */}
-                        <td className="py-4 px-6 text-right space-x-2">
+                        <td className="py-4 px-6 text-right space-x-1.5">
                           {t.status === "Open" && (
                             <button
                               onClick={() => handleStartWork(t.ticketNumber)}
-                              className="px-3 py-1.5 bg-white border border-[#d8d5d0] text-[#37322F] text-xs font-bold rounded-lg hover:bg-[#eae7e3] shadow-xs inline-flex items-center gap-1"
+                              className="px-2.5 py-1.5 bg-white border border-[#d8d5d0] text-[#37322F] text-xs font-bold rounded-lg hover:bg-[#eae7e3] shadow-xs inline-flex items-center gap-1"
                             >
                               <Play className="w-3 h-3 text-stone-600 fill-stone-600" />
                               <span>Start Work</span>
@@ -538,8 +627,22 @@ export default function EngineeringDashboardPage() {
 
                           {t.status !== "Resolved" && (
                             <button
+                              onClick={() => handleToggleBlock(t.ticketNumber)}
+                              className={`px-2.5 py-1.5 text-xs font-bold rounded-lg border shadow-xs inline-flex items-center gap-1 ${
+                                t.status === "Blocked"
+                                  ? "bg-white text-stone-700 border-[#d8d5d0] hover:bg-stone-100"
+                                  : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                              }`}
+                            >
+                              <Ban className="w-3 h-3" />
+                              <span>{t.status === "Blocked" ? "Unblock" : "Block"}</span>
+                            </button>
+                          )}
+
+                          {t.status !== "Resolved" && (
+                            <button
                               onClick={() => setResolvingTicket(t)}
-                              className="px-3 py-1.5 bg-emerald-700 text-white text-xs font-bold rounded-lg hover:bg-emerald-800 shadow-xs inline-flex items-center gap-1"
+                              className="px-2.5 py-1.5 bg-emerald-700 text-white text-xs font-bold rounded-lg hover:bg-emerald-800 shadow-xs inline-flex items-center gap-1"
                             >
                               <Check className="w-3.5 h-3.5" />
                               <span>Mark Resolved</span>
@@ -561,6 +664,75 @@ export default function EngineeringDashboardPage() {
             )}
           </section>
         </main>
+
+        {/* Stack Trace Inspector Modal */}
+        {inspectingTicket && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-[#1C1917] text-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-[#292524] space-y-4 max-h-[85vh] overflow-y-auto">
+              <div className="flex justify-between items-start border-b border-[#292524] pb-3">
+                <div>
+                  <span className="font-mono text-xs font-extrabold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-700">
+                    {inspectingTicket.ticketNumber} • {inspectingTicket.customerName} (${inspectingTicket.customerArr.toLocaleString()} ARR)
+                  </span>
+                  <h3 className="font-extrabold text-lg text-white mt-1">{inspectingTicket.title}</h3>
+                </div>
+                <button
+                  onClick={() => setInspectingTicket(null)}
+                  className="text-stone-400 hover:text-white text-xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 font-mono text-xs">
+                <div>
+                  <div className="text-[10px] text-stone-400 uppercase tracking-wider mb-1 font-bold">
+                    Full Exception Stack Trace
+                  </div>
+                  <pre className="bg-black/80 text-amber-200 p-4 rounded-xl border border-[#292524] overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                    {inspectingTicket.stackTrace}
+                  </pre>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[#292524] p-3 rounded-xl border border-[#37322F]">
+                    <div className="text-[10px] text-stone-400 uppercase font-bold">Git Fix Branch</div>
+                    <div className="text-emerald-400 font-bold mt-1 text-xs truncate">
+                      {inspectingTicket.gitBranch}
+                    </div>
+                  </div>
+
+                  <div className="bg-[#292524] p-3 rounded-xl border border-[#37322F]">
+                    <div className="text-[10px] text-stone-400 uppercase font-bold">Assigned Lead</div>
+                    <div className="text-white font-bold mt-1 text-xs truncate">
+                      {inspectingTicket.assignedEngineer}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-[#292524] flex justify-between items-center">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`git checkout -b ${inspectingTicket.gitBranch}`);
+                    showToast("✓ Copied git checkout command to clipboard!");
+                  }}
+                  className="px-3.5 py-2 bg-[#292524] hover:bg-[#37322F] text-amber-300 font-mono text-xs font-bold rounded-lg border border-[#37322F] flex items-center gap-1.5"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy Git Branch Cmd</span>
+                </button>
+
+                <button
+                  onClick={() => setInspectingTicket(null)}
+                  className="px-4 py-2 bg-white text-stone-900 font-extrabold text-xs rounded-lg hover:bg-stone-200"
+                >
+                  Close Inspector
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Mark Resolved Modal */}
         {resolvingTicket && (
