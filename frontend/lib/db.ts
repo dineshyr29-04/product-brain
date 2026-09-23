@@ -340,6 +340,33 @@ export const db = {
     });
   },
 
+  async getOpportunityById(id: string) {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('product_opportunities')
+          .select(`
+            *,
+            product:products(id, name)
+          `)
+          .eq('id', id)
+          .single();
+        if (!error && data) return data;
+      } catch (e: any) {
+        console.warn('Supabase getOpportunityById fallback:', e.message);
+      }
+    }
+
+    const opp = memoryDb.product_opportunities.find((o) => o.id === id);
+    if (!opp) return null;
+    const product = memoryDb.products.find((p) => p.id === opp.product_id) || defaultProducts[0];
+    return { ...opp, product };
+  },
+
+  async updateOpportunityPRD(id: string, prdContent: string) {
+    return this.updateOpportunityPrd(id, prdContent);
+  },
+
   async updateOpportunityPrd(id, prdContent) {
     const opp = memoryDb.product_opportunities.find((o) => o.id === id);
     if (opp) {
