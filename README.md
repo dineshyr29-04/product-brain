@@ -1,67 +1,151 @@
-# 🧠 ProductBrain V1 — Enterprise Product Intelligence Platform
+# 🧠 ProductBrain V1 — Enterprise Product Intelligence Engine
 
 > **Hackathon Theme:** Enterprise AI  
-> **Core Concept:** An autonomous product intelligence engine that bridges the gap between Sales deals (ARR), Customer Support complaints, and Engineering execution.
+> **Core Mission:** Bridge Sales deals ($ ARR), Support complaints, and Engineering execution into a unified autonomous intelligence engine.
 
 ---
 
-## 📌 The Real-World Problem Addressed
+## 📌 Problem & Solution
 
-Modern software enterprises lose millions in churned accounts because Sales deals in Salesforce, Support complaints in Zendesk, and Engineering tickets in Jira operate in complete silos. Product Managers spend 40% of their week manually copying data, writing PRDs, and trying to guess which technical task brings the most revenue.
+Modern enterprise software teams operate in silos:
+- **Sales & Customer Success** track account churn & $ ARR in Salesforce/HubSpot.
+- **Customer Support** receives urgent complaints in Zendesk/Intercom.
+- **Engineering** works on tickets in Jira/GitHub Issues.
+- **Product Managers** spend 40% of their week manually reconciling data and writing PRDs.
 
-**ProductBrain V1 proves a complete automated loop:**
-> **Customer Issue → Ticket Auto-Enrichment ($ ARR) → Sales Visibility + Engineering Action → Engineering Resolution → Automated Resolution Dispatch → PM Revenue Aggregation & Opportunity Detection → 1-Click Gemini AI PRD Studio**
+**ProductBrain V1 solves this with an automated intelligence feedback loop:**
+```
+ ┌─────────────────┐       ┌────────────────────────┐       ┌─────────────────────────┐
+ │ Customer Support│ ───►  │ Auto ARR Enrichment    │ ───►  │ Engineering Execution   │
+ │ Issue Input     │       │ ($ Account Impact)     │       │ Queue (Open ➔ In Prog)  │
+ └─────────────────┘       └────────────────────────┘       └────────────┬────────────┘
+                                                                         │
+ ┌─────────────────┐       ┌────────────────────────┐                    │
+ │ 1-Click Gemini  │ ◄───  │ PM Revenue Aggregator  │ ◄───────────────────┘ (Status = Resolved)
+ │ AI PRD Studio   │       │ & Opportunity Grouping │                     │
+ └─────────────────┘       └────────────────────────┘                     ▼
+                                                             ┌─────────────────────────┐
+                                                             │ Gemini AI Auto Customer │
+                                                             │ Resolution Dispatch     │
+                                                             └─────────────────────────┘
+```
 
 ---
 
-## 🛠️ Assignment Tech Stack & Architecture
+## 🏛️ End-to-End System Architecture
 
-- **Frontend:** Next.js / React 19 + Tailwind CSS + Lucide Icons + Recharts
-- **Backend:** Node.js + Express.js + Zod Validation + JWT Authentication
-- **Database:** Supabase PostgreSQL (`supabase_schema.sql` included) + Embedded fallback store for instant local demos
-- **AI Engine:** Google Gemini API (`gemini-1.5-flash`) for auto-generating customer resolution summaries & Product Opportunity PRDs
+ProductBrain V1 consists of a Next.js 14 frontend, a Node.js/Express REST API backend, a PostgreSQL database (Supabase), and Google Gemini AI for autonomous text synthesis.
+
+```
+                           ┌─────────────────────────────────┐
+                           │   Next.js 14 Frontend Portal    │
+                           │   (Executive, Sales, Eng, PM)   │
+                           └────────────────┬────────────────┘
+                                            │ HTTP / JSON API
+                                            ▼
+                           ┌─────────────────────────────────┐
+                           │    Node.js / Express Backend    │
+                           │         (server.js)             │
+                           └──────┬──────────────────┬───────┘
+                                  │                  │
+                ┌─────────────────┴─┐              ┌─┴────────────────┐
+                │ Data Access Layer │              │  AI Core Engine  │
+                │     (db.js)       │              │  (aiService.js)  │
+                └─────────┬─────────┘              └────────┬─────────┘
+                          │                                 │
+                 ┌────────┴────────┐               ┌────────┴────────┐
+                 ▼                 ▼               ▼                 ▼
+          Supabase PostgreSQL  In-Memory Store  Gemini AI API    Resolution & PRD
+          (supabase_schema.sql)  (Fallback)     (gemini-1.5-flash) Output Synthesis
+```
+
+---
+
+## 🗄️ Database Schema & Data Design (Supabase PostgreSQL)
+
+ProductBrain utilizes a PostgreSQL schema defined in [`backend/supabase_schema.sql`](file:///home/dina/project/product-brain/backend/supabase_schema.sql):
+
+### 1. `tickets` Table
+Stores incoming customer support & engineering issues.
+- `id` (UUID, Primary Key)
+- `title` (TEXT) — Brief summary of issue
+- `description` (TEXT) — Technical detail or customer complaint
+- `customer_name` (TEXT) — Enterprise account name
+- `arr` (NUMERIC) — Customer Annual Recurring Revenue ($ ARR)
+- `module` (TEXT) — Product area (e.g. `Authentication`, `Billing`, `API Integration`)
+- `priority` (TEXT) — `Urgent`, `High`, `Medium`, `Low`
+- `status` (TEXT) — `Open`, `In Progress`, `Resolved`
+- `resolution_notes` (TEXT) — Engineer resolution notes
+- `ai_resolution_summary` (TEXT) — Gemini AI generated customer-facing resolution summary
+- `created_at` / `updated_at` (TIMESTAMPTZ)
+
+### 2. `opportunities` Table
+Aggregates high-value product improvement clusters for Product Managers.
+- `id` (UUID, Primary Key)
+- `title` (TEXT) — Feature opportunity title
+- `module` (TEXT) — Affected product module
+- `total_arr_at_risk` (NUMERIC) — Aggregated $ ARR affected across tickets
+- `ticket_count` (INTEGER) — Total linked tickets
+- `status` (TEXT) — `Identified`, `PRD Generated`, `In Development`
+- `ai_prd_content` (TEXT) — Complete Gemini AI generated PRD document
+
+---
+
+## 🛠️ Complete Repository Structure
+
+```
+product-brain/
+├── README.md                      # 👈 Unified Main System Overview (This File)
+├── backend/                       # Node.js / Express API Backend Service
+│   ├── README.md                  # 📄 Backend System Design & API Specs
+│   ├── server.js                  # API entry point & route definitions
+│   ├── db.js                      # Supabase DB client & fallback store
+│   ├── aiService.js               # Google Gemini AI engine integration
+│   ├── supabase_schema.sql        # Supabase PostgreSQL DDL schema & seed data
+│   └── routes/                    # API Route Controllers (tickets, opportunities, dashboards)
+└── frontend/                      # Next.js 14 Frontend Application
+    ├── README.md                  # 📄 Frontend Architecture & UI Overview
+    ├── app/                       # App Router layouts and page views
+    ├── components/                # Persona dashboards, charts & PRD Studio components
+    ├── lib/                       # API integration helpers & utility functions
+    └── hooks/                     # Custom React hooks for API data fetching
+```
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Start Backend Server
+### Prerequisites
+- Node.js >= 18.x
+- npm or pnpm
+
+### 1. Configure Backend Environment
+Navigate to `backend/.env` and verify key settings:
+```env
+PORT=5000
+JWT_SECRET=productbrain_super_secret_jwt_key_2026
+SUPABASE_URL=https://bbkqjbzuwuurbzkgnuld.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+GEMINI_API_KEY=AQ.Ab8RN6...
+```
+
+### 2. Start Backend API Server
 ```bash
 cd backend
 npm install
-npm start
-# Listens on http://localhost:5000
+npm dev   # Runs backend on http://localhost:5000
 ```
 
-### 2. Start Frontend Application
+### 3. Start Frontend Dashboard
 ```bash
 cd frontend
 npm install --legacy-peer-deps
-npm run dev -- -p 3000
-# Access UI at http://localhost:3000
+npm run dev   # Runs UI on http://localhost:3000
 ```
 
 ---
 
-## 🗄️ Database Setup (Supabase)
+## 📚 Detailed Subsystem Documentation
 
-Copy the SQL script located in `backend/supabase_schema.sql` and run it directly in your **Supabase SQL Editor** to create the PostgreSQL tables and seed data.
-
-Add your credentials to `backend/.env`:
-```env
-PORT=5000
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-GEMINI_API_KEY=your_google_gemini_api_key
-```
-
----
-
-## 🏆 Key V1 Features Implemented
-
-1. **Auto-Enriched Customer Tickets:** Submitting an issue automatically attaches Customer Name, $ ARR, Product Module, and Priority.
-2. **Sales & Revenue View:** Answers *"Which of my high-value customers are experiencing issues?"* with live AI customer resolution updates.
-3. **Engineering Execution Queue:** Status transition (`Open` → `In Progress` → `Resolved`).
-4. **Automated Resolution Propagation:** Marking a ticket `Resolved` invokes Gemini AI to generate an empathetic customer-facing update for Sales & Support.
-5. **Product Opportunity Aggregation:** Detects recurring issues affecting high $ ARR and groups them for the PM.
-6. **1-Click Gemini PRD Studio:** Generates complete technical PRDs (User Stories, Architecture, KPIs) in seconds using Google Gemini.
+- ⚙️ **Backend System Design & API Specifications:** [`backend/README.md`](file:///home/dina/project/product-brain/backend/README.md)
+- 💻 **Frontend Architecture & Component Guide:** [`frontend/README.md`](file:///home/dina/project/product-brain/frontend/README.md)
