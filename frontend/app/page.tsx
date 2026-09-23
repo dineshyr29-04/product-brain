@@ -12,15 +12,15 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased selection:bg-blue-600 selection:text-white w-full overflow-x-hidden">
       {/* ========================================================================= */}
-      {/* 1. TOP NAVIGATION BAR (Clean White Glassmorphism, Full Width, Responsive) */}
+      {/* 1. TOP NAVIGATION BAR (Clean White, Full Width)                            */}
       {/* ========================================================================= */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 w-full shadow-xs">
-        <div className="w-full px-6 sm:px-10 lg:px-16 h-20 flex items-center justify-between">
+        <div className="w-full px-6 sm:px-12 lg:px-20 h-20 flex items-center justify-between">
           {/* Brand Logo */}
           <PBLogo size="md" textColor="dark" />
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
+          <nav className="hidden md:flex items-center gap-10 text-sm font-semibold text-slate-600">
             <a href="#showcase" className="hover:text-blue-600 transition-colors">
               Platform Views
             </a>
@@ -36,7 +36,7 @@ export default function LandingPage() {
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-4">
             <Show when="signed-out">
               <Link
                 href="/sign-in"
@@ -46,7 +46,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/sign-up"
-                className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-all flex items-center gap-1"
+                className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-all flex items-center gap-1"
               >
                 <span>Get Started Free</span>
                 <span>→</span>
@@ -57,7 +57,7 @@ export default function LandingPage() {
               <div className="flex items-center gap-3">
                 <Link
                   href="/dashboard/pm"
-                  className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-all flex items-center gap-1"
+                  className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-all flex items-center gap-1.5"
                 >
                   <span>Go to Workspace</span>
                   <span>→</span>
@@ -133,58 +133,58 @@ export default function LandingPage() {
       </header>
 
       {/* ========================================================================= */}
-      {/* 2. HERO SECTION (Full Width, Pure White Background, Clean Typography)    */}
+      {/* 2. HERO SECTION (Full Width, Matching Uploaded Screenshot Exact Layout)   */}
       {/* ========================================================================= */}
-      <section className="bg-white text-slate-900 pt-12 pb-16 md:pt-20 md:pb-28 border-b border-slate-100 w-full">
-        <div className="w-full px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto space-y-8 text-center">
+      <section className="bg-white text-slate-900 pt-16 pb-20 md:pt-24 md:pb-32 border-b border-slate-100 w-full">
+        <div className="w-full px-6 sm:px-12 lg:px-20 space-y-8 text-center">
           
-          {/* Badge */}
-          <div>
-            <span className="inline-block bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-2xs">
-              Enterprise Product Operations Platform
+          {/* Pill Badge */}
+          <div className="flex justify-center">
+            <span className="inline-block bg-[#E0EFFF] text-[#0066FF] border border-[#B3D7FF] text-[11px] font-extrabold uppercase tracking-widest px-4 py-1.5 rounded-full shadow-2xs">
+              ENTERPRISE PRODUCT OPERATIONS PLATFORM
             </span>
           </div>
 
-          {/* Headline */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-slate-900 tracking-tight leading-[1.1] max-w-4xl mx-auto">
+          {/* Main Headline */}
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-[#0F172A] tracking-tight leading-[1.05] max-w-5xl mx-auto">
             Quickly Drive Product Operations.
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg md:text-xl text-slate-600 max-w-3xl mx-auto font-normal leading-relaxed">
+          <p className="text-base sm:text-xl text-slate-600 max-w-3xl mx-auto font-normal leading-relaxed">
             Connect customer escalations, defect intelligence, and engineering triage into one unified, role-isolated workspace.
           </p>
 
           {/* CTA Buttons */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto sm:max-w-none">
+          <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto sm:max-w-none">
             <Link
               href="/sign-in?role=pm"
-              className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm sm:text-base rounded-xl shadow-lg hover:shadow-xl transition-all text-center"
+              className="w-full sm:w-auto px-8 py-4 bg-[#2563EB] hover:bg-blue-700 text-white font-extrabold text-sm sm:text-base rounded-xl shadow-md hover:shadow-lg transition-all text-center flex items-center justify-center gap-2"
             >
               <span>Launch Product Workspace</span>
-              <span className="ml-2">→</span>
+              <span className="font-mono">→</span>
             </Link>
             <a
               href="#showcase"
-              className="w-full sm:w-auto px-7 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm sm:text-base rounded-xl border border-slate-200 transition-all text-center"
+              className="w-full sm:w-auto px-8 py-4 bg-[#F1F5F9] hover:bg-slate-200 text-slate-800 font-extrabold text-sm sm:text-base rounded-xl border border-slate-200/80 transition-all text-center"
             >
               Explore 3 Department Portals
             </a>
           </div>
 
-          {/* Social Proof Counter Bar */}
-          <div className="pt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-100 text-center max-w-4xl mx-auto">
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="text-xl sm:text-2xl font-black text-slate-900">$1,430,000</div>
-              <div className="text-xs text-slate-500 font-semibold mt-0.5">ARR At-Risk Baseline</div>
+          {/* Metric Cards Strip (Matching Screenshot: 3 Side-by-Side Cards) */}
+          <div className="pt-10 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="p-6 bg-[#F8FAFC] rounded-2xl border border-slate-200/80 text-center space-y-1">
+              <div className="text-2xl sm:text-3xl font-black text-slate-900">$1,430,000</div>
+              <div className="text-xs text-slate-500 font-bold">ARR At-Risk Baseline</div>
             </div>
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="text-xl sm:text-2xl font-black text-blue-600">1-Click</div>
-              <div className="text-xs text-slate-500 font-semibold mt-0.5">Executive PRD Generation</div>
+            <div className="p-6 bg-[#F8FAFC] rounded-2xl border border-slate-200/80 text-center space-y-1">
+              <div className="text-2xl sm:text-3xl font-black text-[#2563EB]">1-Click</div>
+              <div className="text-xs text-slate-500 font-bold">Executive PRD Generation</div>
             </div>
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="text-xl sm:text-2xl font-black text-emerald-600">3 Portals</div>
-              <div className="text-xs text-slate-500 font-semibold mt-0.5">Strict Role Isolation</div>
+            <div className="p-6 bg-[#F8FAFC] rounded-2xl border border-slate-200/80 text-center space-y-1">
+              <div className="text-2xl sm:text-3xl font-black text-[#10B981]">3 Portals</div>
+              <div className="text-xs text-slate-500 font-bold">Strict Role Isolation</div>
             </div>
           </div>
 
@@ -192,17 +192,17 @@ export default function LandingPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. PLATFORM SHOWCASE (3 Crisp White Side-by-Side Cards, Full Width)       */}
+      {/* 3. PLATFORM SHOWCASE (Full Width, 3 Crisp Side-by-Side Cards)             */}
       {/* ========================================================================= */}
-      <section id="showcase" className="py-16 md:py-24 bg-slate-50/60 border-b border-slate-200 w-full">
-        <div className="w-full px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto space-y-12">
+      <section id="showcase" className="py-20 md:py-28 bg-slate-50/60 border-b border-slate-200 w-full">
+        <div className="w-full px-6 sm:px-12 lg:px-20 space-y-12">
           
           {/* Section Header */}
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-3.5 py-1 rounded-full border border-blue-200 inline-block">
-              Platform Overview
+              PLATFORM OVERVIEW
             </span>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
               Three Specialized Portals. One Unified Engine.
             </h2>
             <p className="text-sm sm:text-base text-slate-600">
@@ -262,7 +262,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* CARD 2: PRODUCT MANAGER WORKSPACE (Featured Center Card) */}
+            {/* CARD 2: PRODUCT MANAGER WORKSPACE */}
             <div className="bg-white rounded-2xl border-2 border-blue-600 shadow-md hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden">
               <div className="bg-blue-600 text-white text-[10px] font-extrabold py-1.5 text-center uppercase tracking-widest">
                 Executive Command Center
@@ -381,15 +381,15 @@ export default function LandingPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 4. ALTERNATING DEEP-DIVE SECTIONS (Full Width, Pure Crisp Layout)         */}
+      {/* 4. ALTERNATING DEEP-DIVE SECTIONS (Full Width)                            */}
       {/* ========================================================================= */}
-      <section id="deep-dive" className="py-16 md:py-24 bg-white border-b border-slate-200 w-full space-y-24">
+      <section id="deep-dive" className="py-20 md:py-28 bg-white border-b border-slate-200 w-full space-y-24">
         
-        <div className="w-full px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto space-y-3 text-center">
+        <div className="w-full px-6 sm:px-12 lg:px-20 space-y-3 text-center">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-600 bg-slate-100 px-3.5 py-1 rounded-full border border-slate-200 inline-block">
             In-Depth Page Breakdown
           </span>
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
             How Each Workspace Operates & Why It's Special
           </h2>
           <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
@@ -400,7 +400,7 @@ export default function LandingPage() {
         {/* ----------------------------------------------------------------------- */}
         {/* ALTERNATING SECTION 1: PRODUCT MANAGER WORKSPACE (Image Left, Text Right) */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="w-full px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        <div className="w-full px-6 sm:px-12 lg:px-20 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           {/* Left: High-Res Screenshot Frame */}
           <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-slate-50 shadow-md overflow-hidden">
             <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-xs text-slate-500 font-mono">
@@ -471,7 +471,7 @@ export default function LandingPage() {
         {/* ----------------------------------------------------------------------- */}
         {/* ALTERNATING SECTION 2: SALES & CS RADAR (Text Left, Image Right)        */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="w-full px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        <div className="w-full px-6 sm:px-12 lg:px-20 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           {/* Left: Explanatory Content */}
           <div className="lg:col-span-5 space-y-4 order-2 lg:order-1">
             <span className="inline-block text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
@@ -542,7 +542,7 @@ export default function LandingPage() {
         {/* ----------------------------------------------------------------------- */}
         {/* ALTERNATING SECTION 3: ENGINEERING BACKLOG (Image Left, Text Right)      */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="w-full px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        <div className="w-full px-6 sm:px-12 lg:px-20 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           {/* Left: High-Res Screenshot Frame */}
           <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-slate-50 shadow-md overflow-hidden">
             <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-xs text-slate-500 font-mono">
@@ -613,16 +613,16 @@ export default function LandingPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. WHY PRODUCTBRAIN IS SO GOOD (Value Proposition Section, Pure White)    */}
+      {/* 5. WHY PRODUCTBRAIN IS SO GOOD (Value Proposition Section, Full Width)    */}
       {/* ========================================================================= */}
-      <section id="why-pb" className="py-16 md:py-24 bg-slate-50/70 border-b border-slate-200 w-full">
-        <div className="w-full px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto space-y-12">
+      <section id="why-pb" className="py-20 md:py-28 bg-slate-50/70 border-b border-slate-200 w-full">
+        <div className="w-full px-6 sm:px-12 lg:px-20 space-y-12">
           
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <div className="flex justify-center">
               <PBLogo size="lg" showText={false} />
             </div>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
               Why Leading Product & Revenue Teams Choose ProductBrain
             </h2>
             <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
@@ -677,8 +677,8 @@ export default function LandingPage() {
           </div>
 
           {/* CTA Box */}
-          <div className="p-8 sm:p-10 rounded-3xl bg-blue-600 text-white text-center space-y-4 shadow-lg">
-            <h3 className="text-2xl sm:text-3xl font-extrabold">Ready to streamline your product operations?</h3>
+          <div className="p-8 sm:p-12 rounded-3xl bg-blue-600 text-white text-center space-y-4 shadow-lg">
+            <h3 className="text-2xl sm:text-4xl font-extrabold">Ready to streamline your product operations?</h3>
             <p className="text-xs sm:text-sm text-blue-100 max-w-lg mx-auto">
               Get started in under 2 minutes with pre-approved role simulation accounts. Zero credit card required.
             </p>
@@ -696,10 +696,10 @@ export default function LandingPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 6. FOOTER (Pure White, Full Width, Crisp Text)                           */}
+      {/* 6. FOOTER (Pure White, Full Width)                                       */}
       {/* ========================================================================= */}
       <footer className="py-10 bg-white border-t border-slate-200 text-xs text-slate-500 w-full">
-        <div className="w-full px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="w-full px-6 sm:px-12 lg:px-20 flex flex-col sm:flex-row items-center justify-between gap-4">
           <PBLogo size="sm" textColor="dark" />
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-slate-500">
