@@ -42,6 +42,7 @@ import {
 import { useRouter } from "next/navigation";
 import DepartmentGuard from "@/components/DepartmentGuard";
 import PBLogo from "@/components/PBLogo";
+import PMNavHeader from "@/components/PMNavHeader";
 import { getTeamMembers, addTeamMember, removeTeamMember, UserProfile, getCurrentUser, logoutUser } from "@/lib/authHelper";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api";
@@ -320,75 +321,14 @@ Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
           </div>
         )}
 
-        {/* Top Header (Matching Screenshot 1) */}
-        <header className="w-full bg-[#F7F5F3] border-b border-[#e0dedb] px-6 py-3 flex flex-wrap items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-opacity-95 gap-3">
-          <div className="flex items-center gap-4">
-            <PBLogo size="sm" showText={true} textColor="dark" />
-            <div className="h-4 w-px bg-[#d8d5d0]" />
-            <div>
-              <span className="font-extrabold text-sm text-[#37322F] tracking-tight">Program Manager (PM)</span>
-              <span className="ml-2 text-[10px] font-mono px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded font-semibold">Enterprise v1.0</span>
-            </div>
-          </div>
-
-          {/* Active Tab Pill (Strictly Isolated - No switcher links to other dashboards) */}
-          <div className="flex items-center gap-2 bg-[#eae7e3] p-1 rounded-lg border border-[#d8d5d0]">
-            <span className="px-3.5 py-1 bg-white text-[#37322F] text-xs font-bold rounded shadow-xs flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-600" />
-              <span>Program Manager (PM) Workspace</span>
-            </span>
-          </div>
-
-          {/* Action Controls & Auth */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center border border-[#d8d5d0] rounded-lg overflow-hidden bg-white text-[11px] font-semibold">
-              <button onClick={handleResetToZero} className="px-2.5 py-1 hover:bg-[#eae7e3] border-r border-[#d8d5d0] text-stone-600">
-                ↺ 0 Baseline
-              </button>
-              <button onClick={handleSeedDemoData} className="px-2.5 py-1 hover:bg-[#eae7e3] text-stone-600">
-                ⬡ Demo Data
-              </button>
-            </div>
-
-            <button
-              onClick={fetchDashboardData}
-              disabled={refreshing}
-              className="px-2.5 py-1 rounded-lg border border-[#d8d5d0] bg-white text-[#605a57] hover:bg-[#f0ede9] text-xs font-semibold flex items-center gap-1.5"
-              title="Refresh Telemetry"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              <span>Refresh</span>
-            </button>
-
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-3 py-1 bg-[#37322F] text-white text-xs font-semibold rounded-lg hover:bg-[#252220] flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Create / Import</span>
-            </button>
-
-            <div className="flex items-center gap-2 pl-2 border-l border-[#d8d5d0]">
-              <div className="flex items-center gap-1.5 text-xs text-[#37322F]">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="font-bold">{currentUser?.name || "Elena Rostova"}</span>
-                <span className="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded font-mono font-bold">
-                  PM
-                </span>
-              </div>
-              <button
-                onClick={() => {
-                  logoutUser();
-                  router.push("/sign-in");
-                }}
-                title="Sign Out"
-                className="p-1 text-stone-400 hover:text-stone-700 rounded transition-colors"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </header>
+        {/* PM Navigation Header */}
+        <PMNavHeader
+          activeTab="overview"
+          onBaselineZero={handleResetToZero}
+          onLoadDemoData={handleSeedDemoData}
+          onRefresh={fetchDashboardData}
+          onCreateAction={() => setShowCreateModal(true)}
+        />
 
         {/* Main Content Area (Full Width Container) */}
         <main className="w-full px-6 lg:px-10 py-6 space-y-6">
