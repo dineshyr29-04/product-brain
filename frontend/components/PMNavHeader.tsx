@@ -15,7 +15,7 @@ import PBLogo from "@/components/PBLogo";
 import { getCurrentUser, logoutUser, UserProfile } from "@/lib/authHelper";
 
 interface PMNavHeaderProps {
-  activeTab: "overview" | "telemetry" | "prds" | "members";
+  activeTab: "overview" | "telemetry" | "prds" | "members" | "analytics";
   onBaselineZero?: () => void;
   onLoadDemoData?: () => void;
   onRefresh?: () => void;
@@ -148,7 +148,7 @@ export default function PMNavHeader({
         </div>
       </div>
 
-      {/* Sub-Header Navigation Tabs (No Icons, Prominently Highlighted Active Tab) */}
+      {/* Sub-Header Navigation Tabs */}
       <div className="px-6 lg:px-10 py-2 bg-[#F2EFEA] flex flex-wrap items-center gap-2">
         <Link
           href="/dashboard/pm"
@@ -181,6 +181,17 @@ export default function PMNavHeader({
           }`}
         >
           PRDs & Closed Tickets
+        </Link>
+
+        <Link
+          href="/dashboard/pm/analytics"
+          className={`px-4 py-2 text-xs transition-all ${
+            activeTab === "analytics"
+              ? "bg-[#37322F] text-white font-extrabold shadow-sm rounded-lg border border-[#37322F]"
+              : "bg-white/90 text-[#605a57] font-bold rounded-lg border border-[#d8d5d0] hover:bg-white hover:text-[#37322F]"
+          }`}
+        >
+          Executive Analytics & Board Reports
         </Link>
 
         <Link
