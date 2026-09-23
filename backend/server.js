@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import ticketsRouter from './routes/tickets.js';
 import dashboardsRouter from './routes/dashboards.js';
 import opportunitiesRouter from './routes/opportunities.js';
+import authRouter from './routes/auth.js';
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRouter);
 app.use('/api/tickets', ticketsRouter);
 app.use('/api/dashboards', dashboardsRouter);
 app.use('/api/opportunities', opportunitiesRouter);

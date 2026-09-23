@@ -20,7 +20,10 @@ import {
   X,
   Layers,
   BarChart3,
-  ShieldAlert
+  ShieldAlert,
+  UserCheck,
+  LogOut,
+  Lock
 } from "lucide-react";
 
 const API_BASE = "http://localhost:5000/api";
@@ -29,6 +32,11 @@ export default function ProductBrainDashboard() {
   const [activeTab, setActiveTab] = useState<"sales" | "engineering" | "pm">("pm");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Persona Auth State
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [personas, setPersonas] = useState<any[]>([]);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   // Metadata
   const [customers, setCustomers] = useState<any[]>([]);
@@ -62,6 +70,31 @@ export default function ProductBrainDashboard() {
   });
   const [submittingTicket, setSubmittingTicket] = useState(false);
 
+  const fetchPersonas = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/auth/personas`);
+      setPersonas(res.data.personas || []);
+      if (res.data.personas?.length > 0 && !currentUser) {
+        // Default login as Product Manager
+        const pmPersona = res.data.personas.find((p: any) => p.role === "pm") || res.data.personas[0];
+        handlePersonaLogin(pmPersona);
+      }
+    } catch (err) {
+      console.error("Error fetching personas:", err);
+    }
+  };
+
+  const handlePersonaLogin = async (persona: any) => {
+    try {
+      const res = await axios.post(`${API_BASE}/auth/login`, { personaId: persona.id });
+      setCurrentUser(res.data.user);
+      setActiveTab(persona.role as "sales" | "engineering" | "pm");
+      setIsLoginModalOpen(false);
+    } catch (err) {
+      console.error("Login failed:", err);
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
       setRefreshing(true);
@@ -94,6 +127,7 @@ export default function ProductBrainDashboard() {
   };
 
   useEffect(() => {
+    fetchPersonas();
     fetchDashboardData();
   }, []);
 
@@ -213,7 +247,21 @@ export default function ProductBrainDashboard() {
             </button>
           </div>
 
+          {/* Active Persona Badge & Actions */}
           <div className="flex items-center gap-3">
+            {currentUser && (
+              <button
+                onClick={() => setIsLoginModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#e0dedb] rounded-xl hover:bg-[#eae7e3] transition-all text-xs font-medium text-[#37322F]"
+              >
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span className="font-semibold">{currentUser.name}</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-stone-100 rounded-full border border-stone-200 uppercase font-mono text-[#605a57]">
+                  {currentUser.role}
+                </span>
+              </button>
+            )}
+
             <button
               onClick={fetchDashboardData}
               disabled={refreshing}
@@ -620,6 +668,60 @@ export default function ProductBrainDashboard() {
       </main>
 
       {/* ========================================================================= */}
+      {/* MODAL: PERSONA AUTH / SWITCHER */}
+      {/* ========================================================================= */}
+      {isLoginModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-[#e0dedb] shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg text-[#37322F] flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-blue-600" /> Switch Persona Profile
+              </h3>
+              <button onClick={() => setIsLoginModalOpen(false)} className="text-[#828387] hover:text-[#37322F]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#605a57] mb-4">Select an enterprise persona profile to experience ProductBrain V1 from their perspective.</p>
+
+            <div className="space-y-3">
+              {personas.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => handlePersonaLogin(p)}
+                  className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between ${
+                    currentUser?.id === p.id
+                      ? "bg-[#37322F] text-white border-black"
+                      : "bg-[#fbfaf9] hover:bg-[#eae7e3] text-[#37322F] border-[#e0dedb]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-stone-200 overflow-hidden shrink-0">
+                      <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">{p.name}</div>
+                      <div className={`text-xs ${currentUser?.id === p.id ? "text-stone-300" : "text-[#605a57]"}`}>{p.title}</div>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase font-mono ${
+                      currentUser?.id === p.id
+                        ? "bg-amber-400 text-black"
+                        : "bg-stone-200 text-stone-700"
+                    }`}
+                  >
+                    {p.role}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL 1: SUBMIT CUSTOMER TICKET */}
       {/* ========================================================================= */}
       {isSubmitModalOpen && (
@@ -834,7 +936,7 @@ export default function ProductBrainDashboard() {
 
               <button
                 onClick={() => setIsPrdModalOpen(false)}
-                className="px-6 py-2.5 bg-[#37322F] text-white hover:bg-[#252220] text-xs font-bold rounded-xl"
+                className="px-6 py-2.5 bg-[#37322F] text-[#ffffff] hover:bg-[#252220] text-xs font-bold rounded-xl"
               >
                 Close PRD Studio
               </button>
