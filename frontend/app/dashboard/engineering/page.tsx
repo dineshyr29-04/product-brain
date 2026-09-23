@@ -16,12 +16,19 @@ import {
   ArrowLeft,
   Check,
   Search,
-  Code
+  Code,
+  Lock,
+  LogOut
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import DepartmentGuard from "@/components/DepartmentGuard";
+import { getCurrentUser, logoutUser, UserProfile } from "@/lib/authHelper";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api";
 
 export default function EngineeringDashboardPage() {
+  const router = useRouter();
+  const [currentUser, setCurrentUserState] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -66,6 +73,7 @@ export default function EngineeringDashboardPage() {
 
   useEffect(() => {
     fetchEngData();
+    setCurrentUserState(getCurrentUser());
   }, []);
 
   const handleStartWork = async (ticketId: string) => {
@@ -120,7 +128,8 @@ export default function EngineeringDashboardPage() {
   const resolvedToday = engData.metrics?.resolvedToday || 0;
 
   return (
-    <div className="min-h-screen bg-[#F7F5F3] text-[#37322F]">
+    <DepartmentGuard requiredRole="engineering">
+      <div className="min-h-screen bg-[#F7F5F3] text-[#37322F]">
       {/* Toast Alert */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#252220] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium border border-[#4a4643] animate-bounce">
@@ -149,11 +158,28 @@ export default function EngineeringDashboardPage() {
           </div>
         </div>
 
-        {/* Workspace Switcher */}
+        {/* Department Security Guardrails */}
         <div className="flex items-center gap-2 bg-[#eae7e3] p-1 rounded-lg border border-[#d8d5d0]">
-          <Link href="/dashboard/pm" className="px-3 py-1 text-xs font-medium text-[#605a57] hover:text-[#37322F] transition-all">PM Dashboard</Link>
-          <Link href="/dashboard/sales" className="px-3 py-1 text-xs font-medium text-[#605a57] hover:text-[#37322F] transition-all">Sales Radar</Link>
-          <span className="px-3 py-1 bg-white text-[#37322F] text-xs font-bold rounded shadow-xs">Engineering Backlog</span>
+          <span className="px-3 py-1 bg-white text-purple-900 text-xs font-bold rounded shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-purple-600" />
+            <span>Engineering Backlog (Active)</span>
+          </span>
+          <button
+            onClick={() => showToast("🔒 Restricted: PM Strategy is isolated to Product Managers.")}
+            className="px-2.5 py-1 text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1 transition-colors cursor-not-allowed"
+            title="Access Restricted to PMs"
+          >
+            <Lock className="w-3 h-3 text-stone-400" />
+            <span>PM Strategy</span>
+          </button>
+          <button
+            onClick={() => showToast("🔒 Restricted: Customer ARR financials are isolated to Sales team.")}
+            className="px-2.5 py-1 text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1 transition-colors cursor-not-allowed"
+            title="Access Restricted to Sales"
+          >
+            <Lock className="w-3 h-3 text-stone-400" />
+            <span>Sales Radar</span>
+          </button>
         </div>
 
         {/* Action Controls & Auth */}
@@ -167,7 +193,26 @@ export default function EngineeringDashboardPage() {
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
           </button>
 
-          <div className="pl-2 border-l border-[#d8d5d0]">
+          <div className="flex items-center gap-2 pl-2 border-l border-[#d8d5d0]">
+            <div className="flex items-center gap-1.5 text-xs text-[#37322F]">
+              <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-800 font-bold flex items-center justify-center text-[10px]">
+                {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : "ENG"}
+              </div>
+              <span className="font-semibold hidden sm:inline">{currentUser?.name || "Alex Rivera"}</span>
+              <span className="text-[10px] bg-purple-50 text-purple-800 px-1.5 py-0.5 rounded font-mono font-medium border border-purple-200">
+                Staff Eng
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                logoutUser();
+                router.push("/sign-in?role=engineering");
+              }}
+              title="Sign Out / Switch Department"
+              className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
             <Show when="signed-in">
               <UserButton fallbackRedirectUrl="/" />
             </Show>
@@ -436,6 +481,7 @@ export default function EngineeringDashboardPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DepartmentGuard>
   );
 }

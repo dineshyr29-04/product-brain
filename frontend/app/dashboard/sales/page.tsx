@@ -17,8 +17,13 @@ import {
   AlertTriangle,
   ArrowLeft,
   Search,
-  Filter
+  Filter,
+  Lock,
+  LogOut
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import DepartmentGuard from "@/components/DepartmentGuard";
+import { getCurrentUser, logoutUser, UserProfile } from "@/lib/authHelper";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api";
 
@@ -37,6 +42,8 @@ const fallbackProducts = [
 ];
 
 export default function SalesRadarPage() {
+  const router = useRouter();
+  const [currentUser, setCurrentUserState] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -102,6 +109,7 @@ export default function SalesRadarPage() {
 
   useEffect(() => {
     fetchSalesData();
+    setCurrentUserState(getCurrentUser());
   }, []);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -189,7 +197,8 @@ export default function SalesRadarPage() {
   const openIssuesCount = salesData.metrics?.openIssuesCount || 0;
 
   return (
-    <div className="min-h-screen bg-[#F7F5F3] text-[#37322F]">
+    <DepartmentGuard requiredRole="sales">
+      <div className="min-h-screen bg-[#F7F5F3] text-[#37322F]">
       {/* Toast Alert */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#252220] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium border border-[#4a4643] animate-bounce">
@@ -218,11 +227,28 @@ export default function SalesRadarPage() {
           </div>
         </div>
 
-        {/* Workspace Switcher */}
+        {/* Department Security Guardrails */}
         <div className="flex items-center gap-2 bg-[#eae7e3] p-1 rounded-lg border border-[#d8d5d0]">
-          <Link href="/dashboard/pm" className="px-3 py-1 text-xs font-medium text-[#605a57] hover:text-[#37322F] transition-all">PM Dashboard</Link>
-          <span className="px-3 py-1 bg-white text-[#37322F] text-xs font-bold rounded shadow-xs">Sales Radar</span>
-          <Link href="/dashboard/engineering" className="px-3 py-1 text-xs font-medium text-[#605a57] hover:text-[#37322F] transition-all">Engineering Backlog</Link>
+          <span className="px-3 py-1 bg-white text-emerald-800 text-xs font-bold rounded shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>Sales Portal (Active)</span>
+          </span>
+          <button
+            onClick={() => showToast("🔒 Restricted: PM Strategy is isolated to Product Managers.")}
+            className="px-2.5 py-1 text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1 transition-colors cursor-not-allowed"
+            title="Access Restricted to PMs"
+          >
+            <Lock className="w-3 h-3 text-stone-400" />
+            <span>PM Strategy</span>
+          </button>
+          <button
+            onClick={() => showToast("🔒 Restricted: Technical stack traces are isolated to Engineers.")}
+            className="px-2.5 py-1 text-xs font-medium text-stone-500 hover:text-stone-700 flex items-center gap-1 transition-colors cursor-not-allowed"
+            title="Access Restricted to Engineers"
+          >
+            <Lock className="w-3 h-3 text-stone-400" />
+            <span>Engineering</span>
+          </button>
         </div>
 
         {/* Action Controls & Auth */}
@@ -252,7 +278,26 @@ export default function SalesRadarPage() {
             <span>Log Customer Escalation</span>
           </button>
 
-          <div className="pl-2 border-l border-[#d8d5d0]">
+          <div className="flex items-center gap-2 pl-2 border-l border-[#d8d5d0]">
+            <div className="flex items-center gap-1.5 text-xs text-[#37322F]">
+              <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-[10px]">
+                {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : "SL"}
+              </div>
+              <span className="font-semibold hidden sm:inline">{currentUser?.name || "Michael Chang"}</span>
+              <span className="text-[10px] bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-mono font-medium border border-emerald-200">
+                Sales Portal
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                logoutUser();
+                router.push("/sign-in?role=sales");
+              }}
+              title="Sign Out / Switch Department"
+              className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
             <Show when="signed-in">
               <UserButton fallbackRedirectUrl="/" />
             </Show>
@@ -532,6 +577,7 @@ export default function SalesRadarPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DepartmentGuard>
   );
 }

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 import {
   ArrowRight,
   Sparkles,
@@ -130,16 +130,18 @@ export default function LandingPage() {
           {/* Right Action Buttons */}
           <div className="flex items-center gap-3">
             <Show when="signed-out">
-              <SignInButton mode="modal">
-                <button className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-lg transition-all border border-slate-700/60">
-                  Sign In
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 transition-all">
-                  Get Started Free
-                </button>
-              </SignUpButton>
+              <Link
+                href="/sign-in"
+                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-lg transition-all border border-slate-700/60"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/sign-up"
+                className="px-5 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 transition-all"
+              >
+                Get Started Free
+              </Link>
             </Show>
 
             <Show when="signed-in">
@@ -196,12 +198,13 @@ export default function LandingPage() {
             {/* Dual Call to Action Buttons */}
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Show when="signed-out">
-                <SignUpButton mode="modal">
-                  <button className="w-full sm:w-auto px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 transition-all flex items-center justify-center gap-2 group">
-                    <span>Start Free as Product Manager</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                </SignUpButton>
+                <Link
+                  href="/sign-in?role=pm"
+                  className="w-full sm:w-auto px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 transition-all flex items-center justify-center gap-2 group"
+                >
+                  <span>Start Free as Product Manager</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
               </Show>
 
               <Show when="signed-in">
@@ -616,12 +619,13 @@ export default function LandingPage() {
 
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Show when="signed-out">
-                <SignUpButton mode="modal">
-                  <button className="w-full sm:w-auto px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
-                    <span>Create Your Workspace</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </button>
-                </SignUpButton>
+                <Link
+                  href="/sign-in?role=pm"
+                  className="w-full sm:w-auto px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
+                >
+                  <span>Create Your Workspace</span>
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
               </Show>
 
               <Show when="signed-in">
