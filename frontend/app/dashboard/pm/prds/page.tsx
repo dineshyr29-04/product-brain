@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import DepartmentGuard from "@/components/DepartmentGuard";
 import PMNavHeader from "@/components/PMNavHeader";
+import { exportPrdToPdf } from "@/lib/pdfExport";
 
 interface PrdItem {
   id: string;
@@ -110,31 +111,18 @@ export default function PMPrdsPage() {
   };
 
   const exportPrdMarkdown = (prd: PrdItem) => {
-    const markdown = `# ${prd.prdId}: ${prd.title}
-**Category**: ${prd.category}
-**Retained ARR**: $${prd.clusterArr.toLocaleString()}
-**Impacted Accounts**: ${prd.customers.join(", ")}
-**Status**: ${prd.status}
-
-## Summary
-${prd.summary}
-
-## User Stories
-${prd.userStories.map((us) => `- ${us}`).join("\n")}
-
-## Acceptance Criteria
-${prd.acceptanceCriteria.map((ac) => `- [ ] ${ac}`).join("\n")}
-`;
-
-    const blob = new Blob([markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${prd.prdId}_Specification.md`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast(`✓ Exported ${prd.prdId} Markdown specification!`);
+    exportPrdToPdf({
+      title: prd.title,
+      prdId: prd.prdId,
+      category: prd.category,
+      summary: prd.summary,
+      userStories: prd.userStories,
+      acceptanceCriteria: prd.acceptanceCriteria,
+      affectedArr: prd.clusterArr,
+      customerCount: prd.customerCount,
+      customers: prd.customers
+    });
+    showToast(`✓ Opening ${prd.prdId} PDF export document!`);
   };
 
   const filteredPrds = samplePrds.filter(
@@ -425,7 +413,7 @@ ${prd.acceptanceCriteria.map((ac) => `- [ ] ${ac}`).join("\n")}
                   className="px-4 py-2 bg-[#37322F] text-white font-bold text-xs rounded-lg hover:bg-[#252220] flex items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download Markdown</span>
+                  <span>Download PDF Spec</span>
                 </button>
               </div>
             </div>

@@ -38,13 +38,16 @@ import {
   X,
   LogOut,
   Shield,
-  Eye
+  Eye,
+  Download
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { useRouter } from "next/navigation";
 import DepartmentGuard from "@/components/DepartmentGuard";
 import PBLogo from "@/components/PBLogo";
 import PMNavHeader from "@/components/PMNavHeader";
 import { getTeamMembers, addTeamMember, removeTeamMember, UserProfile, getCurrentUser, logoutUser } from "@/lib/authHelper";
+import { exportPrdToPdf } from "@/lib/pdfExport";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api";
 
@@ -237,6 +240,7 @@ export default function PMDashboardPage() {
   };
 
   const [generatingPrdId, setGeneratingPrdId] = useState<string | null>(null);
+  const [prdLoadingStatus, setPrdLoadingStatus] = useState<string>("");
 
   // Form State
   const [ticketForm, setTicketForm] = useState({
@@ -342,18 +346,39 @@ export default function PMDashboardPage() {
 
   const handleGeneratePrd = async (oppId: string) => {
     setGeneratingPrdId(oppId);
-    showToast("✨ Intelligence Engine is synthesizing 5-section PRD spec...");
+
+    const steps = [
+      "🔍 Step 1/4: Aggregating telemetry logs & ticket clusters...",
+      "📊 Step 2/4: Calculating ARR risk & account impact...",
+      "🤖 Step 3/4: Intelligence Engine synthesizing 5-section PRD...",
+      "✨ Step 4/4: Finalizing acceptance criteria & architecture..."
+    ];
+
+    let currentStep = 0;
+    setPrdLoadingStatus(steps[0]);
+    showToast(steps[0]);
+
+    const interval = setInterval(() => {
+      currentStep = (currentStep + 1) % steps.length;
+      setPrdLoadingStatus(steps[currentStep]);
+      showToast(steps[currentStep]);
+    }, 850);
+
     try {
       const res = await axios.post(`${API_BASE}/opportunities/${oppId}/generate-prd`);
       if (res.data?.success) {
+        clearInterval(interval);
         showToast("✓ Comprehensive PRD generated autonomously!");
         setSelectedOpportunity(res.data.data);
         await fetchDashboardData();
       }
     } catch {
+      clearInterval(interval);
       showToast("Failed to generate PRD. Please verify backend.");
     } finally {
+      clearInterval(interval);
       setGeneratingPrdId(null);
+      setPrdLoadingStatus("");
     }
   };
 
@@ -806,38 +831,44 @@ Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
               {/* Full PRD Document Container */}
               <div className="overflow-y-auto flex-1 pr-2 space-y-4 text-xs leading-relaxed text-[#37322F] border border-[#e0dedb] rounded-xl p-5 bg-[#FAF8F6]">
                 {selectedOpportunity.prd_content ? (
-                  <div className="space-y-3">
-                    {selectedOpportunity.prd_content.split('\n').map((line: string, idx: number) => {
-                      if (line.startsWith('# ')) {
-                        return <h1 key={idx} className="text-base font-black text-[#37322F] border-b border-[#e0dedb] pb-2 pt-1">{line.replace('# ', '')}</h1>;
-                      }
-                      if (line.startsWith('## ')) {
-                        return <h2 key={idx} className="text-sm font-extrabold text-emerald-800 mt-4 mb-1 border-b border-stone-200 pb-1">{line.replace('## ', '')}</h2>;
-                      }
-                      if (line.startsWith('### ')) {
-                        return <h3 key={idx} className="text-xs font-bold text-[#37322F] mt-3 mb-1">{line.replace('### ', '')}</h3>;
-                      }
-                      if (line.startsWith('- ') || line.startsWith('* ')) {
-                        const content = line.slice(2);
-                        return (
-                          <div key={idx} className="flex items-start gap-2 pl-2 text-xs font-medium text-[#4a4643]">
-                            <span className="text-emerald-600 font-bold">•</span>
-                            <span>{content.replace(/\*\*(.*?)\*\*/g, '$1')}</span>
-                          </div>
-                        );
-                      }
-                      if (/^\d+\.\s/.test(line)) {
-                        return (
-                          <div key={idx} className="flex items-start gap-2 pl-2 text-xs font-medium text-[#4a4643]">
-                            <span className="text-amber-600 font-bold">{line.match(/^\d+\./)?.[0]}</span>
-                            <span>{line.replace(/^\d+\.\s/, '').replace(/\*\*(.*?)\*\*/g, '$1')}</span>
-                          </div>
-                        );
-                      }
-                      if (!line.trim()) return <div key={idx} className="h-1" />;
-                      return <p key={idx} className="text-xs text-[#37322F] font-medium">{line}</p>;
-                    })}
-                  </div>
+                  <ReactMarkdown
+                    components={{
+                      h1: ({ children }) => (
+                        <h1 className="text-base font-black text-[#37322F] border-b border-[#e0dedb] pb-2 pt-1 mb-2">{children}</h1>
+                      ),
+                      h2: ({ children }) => (
+                        <h2 className="text-sm font-extrabold text-emerald-800 border-b border-stone-200 pb-1 mt-4 mb-2 flex items-center gap-1.5">{children}</h2>
+                      ),
+                      h3: ({ children }) => (
+                        <h3 className="text-xs font-bold text-[#37322F] mt-3 mb-1">{children}</h3>
+                      ),
+                      p: ({ children }) => (
+                        <p className="text-xs text-[#37322F] leading-relaxed mb-2 font-medium">{children}</p>
+                      ),
+                      ul: ({ children }) => (
+                        <ul className="space-y-1 my-2 pl-2 text-xs">{children}</ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="space-y-1 my-2 pl-2 text-xs list-decimal list-inside">{children}</ol>
+                      ),
+                      li: ({ children }) => (
+                        <li className="text-xs font-medium text-[#4a4643] flex items-start gap-2">
+                          <span className="text-emerald-600 font-bold shrink-0">•</span>
+                          <span>{children}</span>
+                        </li>
+                      ),
+                      strong: ({ children }) => (
+                        <strong className="font-extrabold text-[#252220]">{children}</strong>
+                      ),
+                      code: ({ children }) => (
+                        <code className="bg-stone-200/70 px-1.5 py-0.5 rounded text-[11px] font-mono text-stone-800 border border-stone-300">
+                          {children}
+                        </code>
+                      )
+                    }}
+                  >
+                    {selectedOpportunity.prd_content}
+                  </ReactMarkdown>
                 ) : (
                   <div className="space-y-4">
                     <div>
@@ -866,17 +897,37 @@ Technical Log: SSO_HANDSHAKE_TIMEOUT [408] redirect to sso.beta.com`
 
               {/* Modal Actions */}
               <div className="pt-3 border-t border-[#e0dedb] flex items-center justify-between shrink-0">
-                <button
-                  onClick={() => {
-                    const textToCopy = selectedOpportunity.prd_content || selectedOpportunity.title;
-                    navigator.clipboard.writeText(textToCopy);
-                    showToast("✓ PRD markdown copied to clipboard!");
-                  }}
-                  className="px-4 py-2 bg-[#FAF8F6] hover:bg-stone-200 border border-[#e0dedb] text-[#37322F] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
-                >
-                  <FileText className="w-3.5 h-3.5 text-stone-600" />
-                  <span>Copy PRD Spec</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      exportPrdToPdf({
+                        title: selectedOpportunity.title,
+                        prdContent: selectedOpportunity.prd_content,
+                        productName: selectedOpportunity.product?.name,
+                        affectedArr: selectedOpportunity.affected_arr,
+                        ticketCount: selectedOpportunity.ticket_count,
+                        customerCount: selectedOpportunity.customer_count
+                      });
+                      showToast("✓ Generated executive PDF download preview!");
+                    }}
+                    className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download PDF Spec</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const textToCopy = selectedOpportunity.prd_content || selectedOpportunity.title;
+                      navigator.clipboard.writeText(textToCopy);
+                      showToast("✓ PRD markdown copied to clipboard!");
+                    }}
+                    className="px-3 py-2 bg-[#FAF8F6] hover:bg-stone-200 border border-[#e0dedb] text-[#37322F] text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-stone-600" />
+                    <span>Copy Markdown</span>
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <button
